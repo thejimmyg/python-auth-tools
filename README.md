@@ -31,6 +31,8 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
+The SAML functionality needs `xmlsec1`. You can get it on macOS with `brew install libxmlsec1`. On Debian bookworm, just install `python3-pysaml2` and it is a dependency.
+
 ## Run
 
 In the first terminal:

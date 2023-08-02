@@ -1,3 +1,7 @@
+# I've chosen these versions to be as close to Debian bookworm-provided versions as possible
+# This means that you can just apt install them instead on Debian and this code will work.
+# Where there isn't an equivalet in PyPi I've used a near version that remains compatible.
+
 # jwcrypto==1.1.0
 # pysaml2==7.0.1
 pysaml2==7.4.2
