@@ -1,0 +1,11 @@
+# jwcrypto==1.1.0
+# pysaml2==7.0.1
+pysaml2==7.4.2
+boto3==1.26.27
+gevent==22.10.2
+jwcrypto==1.0
+markupsafe==2.1.2
+pydantic==1.10.4
+gevent-websocket==0.10.1
+psycogreen==1.0.1
+psycopg2-binary==2.9.5

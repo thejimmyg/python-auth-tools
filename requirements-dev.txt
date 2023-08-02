@@ -1,0 +1,4 @@
+mypy==1.0.1
+black==23.1.0
+behave==1.2.6
+selenium==4.8.3

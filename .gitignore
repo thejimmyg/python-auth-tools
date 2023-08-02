@@ -1,0 +1,12 @@
+/.mypy_cache
+/.venv
+/__pycache__
+/store/oauth_authorization_server/clients.json
+/store/oauth_authorization_server/code.db
+/store/oauth_authorization_server/jwks.json
+/store/oauth_authorization_server/openid-configuration
+/store/oauth_authorization_server/private.key
+/store/oauth_authorization_server/session.db
+/store/oauth_client_flow_code_pkce/code_verifier.db
+/test
+/tmp
