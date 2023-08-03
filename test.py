@@ -241,7 +241,7 @@ def saml_sp_flow(driver, url):
     # }, 'name_id': '<ns0:NameID xmlns:ns0="urn:oasis:names:tc:SAML:2.0:assertion" Format="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">james@example.com</ns0:NameID>', 'came_from': None, 'issuer': 'oktadev/test/sample-sp', 'not_on_or_after': 1690903883, 'authn_info': [('urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified', [], '2023-08-01T14:31:23.512Z')], 'session_index': None}
 
 
-def make_authenticated_request_to_oauth_resource_owner(url, token):
+def make_authenticated_request_to_oauth_resource_owner(url, token, expect_sub=True):
     # curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
     print(url + "/api/v1")
     request = urllib.request.Request(
@@ -258,7 +258,8 @@ def make_authenticated_request_to_oauth_resource_owner(url, token):
         assert claims["aud"] == "client"
         assert claims["iss"] == url
         assert claims["scope"] == "read"
-        assert claims["sub"] == "sub"
+        if expect_sub:
+            assert claims["sub"] == "sub"
 
 
 def make_unauthenticated_request_to_oauth_resource_owner(url, token):
@@ -309,11 +310,17 @@ def sign_jwt_proc(env):
     return token
 
 
-def client_credentials_flow(env, client, secret):
+def client_credentials_flow(env, client, secret, scopes):
     print("About to run client credentials flow")
     print()
     client_credentials_process = subprocess.Popen(
-        ["python3", "cli_oauth_client_flow_client_credentials.py", client, secret],
+        [
+            "python3",
+            "cli_oauth_client_flow_client_credentials.py",
+            client,
+            secret,
+            " ".join(scopes),
+        ],
         stdout=subprocess.PIPE,
         env=env,
     )
@@ -362,7 +369,7 @@ if __name__ == "__main__":
             json.dumps(
                 {
                     "client_credentials": {
-                        "client": {"secret": "secret", "scopes": []}
+                        "client": {"secret": "secret", "scopes": ["read"]}
                     },
                     "code": {
                         "client": {"redirect_uri": url + "/oauth-client/callback"}
@@ -401,6 +408,8 @@ if __name__ == "__main__":
     time.sleep(10)
 
     verify_jwt_proc(env, code_flow_token)
+    make_authenticated_request_to_oauth_resource_owner(url, code_flow_token)
+    make_unauthenticated_request_to_oauth_resource_owner(url, code_flow_token)
     # {
     #   "aud": "client",
     #   "exp": 1691075255,
@@ -409,8 +418,12 @@ if __name__ == "__main__":
     #   "scope": "read",
     #   "sub": "sub"
     # }
-    client_flow_token = client_credentials_flow(env, "client", "secret")
+    client_flow_token = client_credentials_flow(env, "client", "secret", ["read"])
     verify_jwt_proc(env, client_flow_token)
+    make_authenticated_request_to_oauth_resource_owner(
+        url, client_flow_token, expect_sub=False
+    )
+    make_unauthenticated_request_to_oauth_resource_owner(url, client_flow_token)
     # {
     #   "aud": "client",
     #   "exp": 1691075259,
@@ -418,9 +431,6 @@ if __name__ == "__main__":
     #   "iss": "http://localhost:61022",
     #   "sub": "client"
     # }
-    for token in [code_flow_token]:
-        make_authenticated_request_to_oauth_resource_owner(url, token)
-        make_unauthenticated_request_to_oauth_resource_owner(url, token)
     driver = webdriver.Chrome()
     oauth_client_flow_code_okce(driver, url)
     saml_sp_flow(driver, url)

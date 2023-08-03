@@ -80,6 +80,15 @@ def _get_session_id(http, name):
     return None
 
 
+def _get_scopes(q):
+    scopes = []
+    if "scope" in q:
+        for scope in q["scope"][0].split(" "):
+            assert scope in available_scopes, "Not a known scope: " + scope
+            scopes.append(scope)
+    return scopes
+
+
 def _login(http, name):
     session = helper_pkce.code_verifier()
     cookie = cookies.SimpleCookie()
@@ -122,11 +131,7 @@ def oauth_authorization_server_authorize(http):
     assert len(q["client_id"]) == 1
     client_id = q["client_id"][0]
     assert client_id in code_clients, "Unknown client"
-    scopes = []
-    if "scope" in q:
-        for scope in q["scope"][0].split(" "):
-            assert scope in available_scopes, "Not a known scope: " + scope
-            scopes.append(scope)
+    scopes = _get_scopes(q)
     state = None
     if "state" in q:
         assert len(q["state"]) == 1
@@ -259,7 +264,12 @@ def oauth_authorization_server_token(http):
                 "error_description": "Invalid credentials",
             }
             return
-        scopes = client_credentials_clients[client_id]["scopes"]
+        allowed_scopes = client_credentials_clients[client_id]["scopes"]
+        scopes = _get_scopes(q)
+        for scope in scopes:
+            assert (
+                scope in allowed_scopes
+            ), "Scope is available in the app but not allowed in the client credentials client"
     elif grant_type == "code":
         assert "code" in q
         assert len(q["code"]) == 1

@@ -22,13 +22,3 @@ def get_and_delete_code_verifier_value(state: str):
         )
         del db[state.encode("utf8")]
     return result
-
-
-if __name__ == "__main__":
-    import helper_pkce
-
-    state = helper_pkce.code_verifier()
-    put_code_verifier_value(
-        state, CodeVerifierValue(code_verifier=helper_pkce.code_verifier())
-    )
-    print(get_and_delete_code_verifier_value(state))
