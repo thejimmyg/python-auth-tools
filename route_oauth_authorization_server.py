@@ -1,41 +1,42 @@
-from helper_crypto import sign_jwt
-import urllib.parse
-from render import render_main
-from markupsafe import Markup
-import urllib.parse
-import json
 import base64
+import json
+import urllib.parse
+from http import cookies
+
+from markupsafe import Markup
+
+import config
 import helper_pkce
+from config import (
+    clients_json_path,
+    host,
+    oauth_authorization_server_store_dir,
+    scheme,
+    store_dir,
+)
+from helper_crypto import sign_jwt
+from helper_log import log
+from render import render_main
+from route_oauth_resource_owner_api import apis
 from store_oauth_authorization_server_codes import (
-    get_and_delete_code_value,
-    put_code_value,
-    get_code_value,
     CodeValue,
+    get_and_delete_code_value,
+    get_code_value,
+    put_code_value,
     set_code_sub,
 )
 from store_oauth_authorization_server_session import (
-    put_session_value,
     SessionValue,
     get_session_value,
+    put_session_value,
 )
-import os
-from http import cookies
-from route_oauth_resource_owner_api import apis
-from config import (
-    clients_json_path,
-    store_dir,
-    oauth_authorization_server_store_dir,
-    host,
-    scheme,
-)
-import config
 
 available_scopes = []
 for api in apis:
     for required_scope in apis[api][1]:
         if required_scope not in available_scopes:
             available_scopes.append(required_scope)
-print(available_scopes)
+log(__file__, "Available scopes:", available_scopes)
 
 
 with open(clients_json_path, "r") as fp:
@@ -245,8 +246,10 @@ def oauth_authorization_server_token(http):
                 "error_description": "Expected basic Authorization header",
             }
             return
-        print(creds[6:])
-        print(base64.b64decode(creds[6:] + "=="))
+        log(__file__, "Basic authorization header:", creds[6:])
+        log(
+            __file__, "Base64 decoded basic header:", base64.b64decode(creds[6:] + "==")
+        )
         client_id, secret = base64.b64decode(creds[6:] + "==").decode("utf8").split(":")
         # XXX This isn't quite right
         sub = client_id
@@ -271,15 +274,17 @@ def oauth_authorization_server_token(http):
         code_challenge = code_value.code_challenge
         scopes = code_value.scopes
         sub = code_value.sub
-        print(
+        log(
+            __file__,
+            "Authorize code params:",
             code,
             code_verifier,
             code_value.client_id,
-            code_value.code_challenge,
-            code_value.sub,
+            code_challenge,
+            sub,
         )
         # This is the key check - if the code_challenge we recieved at the start can be generated from this code verifier, it is the same client and we can issue a token.
-        assert helper_pkce.code_challenge(code_verifier) == code_value.code_challenge
+        assert helper_pkce.code_challenge(code_verifier) == code_challenge
     expires_in = 600
     http.response.status = "200 OK"
     http.response.body = {

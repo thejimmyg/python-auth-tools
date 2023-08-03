@@ -7,19 +7,20 @@ Steps:
 * 
 """
 
-from store_oauth_client_flow_code_pkce_code_verifiers import (
-    get_and_delete_code_verifier_value,
-    put_code_verifier_value,
-    CodeVerifierValue,
-)
-import helper_pkce
-import urllib.parse
 import json
-import config
+import urllib.parse
 
+import config
+import helper_pkce
 from helper_crypto import verify_jwt
 from helper_http import RespondEarly
+from helper_log import log
 from render_oauth_client import render_oauth_client_success
+from store_oauth_client_flow_code_pkce_code_verifiers import (
+    CodeVerifierValue,
+    get_and_delete_code_verifier_value,
+    put_code_verifier_value,
+)
 
 # XXX Expiring old code verifiers
 
@@ -63,20 +64,19 @@ def oauth_client_flow_code_pkce_callback(http):
     # http.response.headers['location'] = url
     # http.response.body = b'Redirecting ...'
 
+    # XXX Make this spec-compliant
     try:
-        print(url)
+        log(__file__, "URL:", url)
         with urllib.request.urlopen(url) as fp:
-            print(fp)
             response = json.loads(fp.read())
-            print(response)
             assert response["token_type"] == "bearer"
             access_token = response["access_token"]
-            print(access_token)
+            log(__file__, "Access token:", access_token)
             # Not strictly necessary, but shouldn't hurt:
-            print(verify_jwt(access_token))
+            log(__file__, "Verified claims:", verify_jwt(access_token))
             http.response.body = render_oauth_client_success(jwt=access_token)
     except urllib.error.HTTPError as e:
-        print("ERROR:", e.read().decode())
+        log(__file__, "ERROR:", e.read().decode())
         http.response.body = "Could not get access token."
 
 

@@ -1,26 +1,23 @@
-import os
+import config
 from route_oauth_authorization_server import (
     oauth_authorization_server_authorize,
-    oauth_authorization_server_token,
-    oauth_authorization_server_login,
     oauth_authorization_server_consent,
+    oauth_authorization_server_login,
     oauth_authorization_server_openid_configuration,
+    oauth_authorization_server_token,
 )
-from route_oauth_resource_owner_api import v1
+from route_oauth_client import oauth_client_home
+from route_oauth_client_flow_code_pkce import (
+    oauth_client_flow_code_pkce_callback,
+    oauth_client_flow_code_pkce_login,
+)
 from route_oauth_resource_owner import (
     oauth_resource_owner_home,
     oauth_resource_owner_openapi,
 )
-from route_oauth_client_flow_code_pkce import (
-    oauth_client_flow_code_pkce_login,
-    oauth_client_flow_code_pkce_callback,
-)
+from route_oauth_resource_owner_api import v1
+from route_saml_sp import saml_acs, saml_login
 from route_static import static
-from route_oauth_client import oauth_client_home
-
-from route_saml_sp import saml_login, saml_acs
-import config
-
 
 routes = {
     "/saml2/login/": saml_login,

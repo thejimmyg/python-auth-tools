@@ -1,6 +1,7 @@
-from render_oauth_resource_owner import render_oauth_resource_owner_home
-from config import url
 import json
+
+from config import url
+from render_oauth_resource_owner import render_oauth_resource_owner_home
 
 
 def oauth_resource_owner_home(http):

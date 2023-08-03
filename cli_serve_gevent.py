@@ -2,10 +2,10 @@ if __name__ == "__main__":
     from gevent import monkey
 
     monkey.patch_all()
-    from http_gevent import StreamServer, server, RespondEarly
-    import traceback
-    from route import routes
+
     from config import host, port
+    from http_gevent import RespondEarly, StreamServer, server
+    from route import routes
 
     server = StreamServer(
         (host, port),

@@ -1,15 +1,17 @@
-from datetime import datetime as dt
-import json
-from jwcrypto import jwt, jwk, jws
 import base64
+import json
 import urllib.request
+from datetime import datetime as dt
+
+from jwcrypto import jwk, jws, jwt
 
 from config import (
-    store_dir,
     oauth_authorization_server_store_dir,
     private_key_path,
+    store_dir,
     url,
 )
+from helper_log import log
 
 #
 # Fetch OpenID Configuration
@@ -37,9 +39,9 @@ def client_credentials_token(token_endpoint, client, secret):
     try:
         with urllib.request.urlopen(request) as fp:
             response = json.loads(fp.read())
-            # print(verify_jwt(response["access_token"]))
+            # log(__file__, 'Verified JWT:', verify_jwt(response["access_token"]))
     except urllib.error.HTTPError as e:
-        print("ERROR:", e.read().decode())
+        log(__file__, "ERROR:", e.read().decode())
         raise
     return response
 
@@ -92,20 +94,19 @@ def sign_jwt(client_id, sub, expires_in=600, scopes=None):
 def verify_jwt(signed_jwt):
     if not signed_jwt or not signed_jwt.startswith("e"):
         raise Exception("Not a valid JWT")
-    print(signed_jwt)
+    log(__file__, "Signed JWT:", signed_jwt)
     issuer = json.loads(
         base64.b64decode(signed_jwt.split(".")[1] + "==").decode("utf8")
     )["iss"]
-    print(issuer)
-    with urllib.request.urlopen(issuer + "/.well-known/openid-configuration") as fp:
-        oidc = json.loads(fp.read())
-    print(oidc)
-    with urllib.request.urlopen(oidc["jwks_uri"]) as fp:
+    log(__file__, "Issuer:", issuer)
+    openid_configuration = fetch_openid_configuration(issuer)
+    log(__file__, "OpenID Configuration:", openid_configuration)
+    with urllib.request.urlopen(openid_configuration["jwks_uri"]) as fp:
         jwks = json.loads(fp.read())
         public_key = jwk.JWK(**jwks["keys"][0])
     jwstoken = jws.JWS()
     jwstoken.deserialize(signed_jwt)
-    print(jwstoken.jose_header)
+    log(__file__, "JOSE Header:", jwstoken.jose_header)
     ja = jwt.JWT(algs=["RS256"])
     ja.deserialize(signed_jwt, public_key)
     claims = ja.token.payload.decode()
@@ -122,7 +123,6 @@ def verify_jwt(signed_jwt):
 # Failure
 # jwstoken = jws.JWS()
 # jwstoken.deserialize(signed_jwt+'q')
-# print(jwstoken.jose_header['kid'])
 # jwstoken.verify(key)
 # payload = jwstoken.payload
-# print(payload.decode())
+# log(__file__, 'Decoded payload:', payload.decode())

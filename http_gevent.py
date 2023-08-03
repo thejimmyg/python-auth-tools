@@ -18,11 +18,14 @@ This module does a few things for us:
 * If the body is changed and the Content-Type is missing, set it
 """
 
-from gevent.server import StreamServer
-from helper_http import Request, Response, Http, RespondEarly
-from markupsafe import Markup
 import json
 import traceback
+
+from gevent.server import StreamServer
+from markupsafe import Markup
+
+from helper_http import Http, Request, RespondEarly, Response
+from helper_log import log
 
 
 class BadRequest(Exception):
@@ -57,11 +60,11 @@ def handle(routes, method, path, query, request_headers, request_body=None):
             http.response.body = b"404 Not Found"
     except RespondEarly:
         pass
-    except Exception as e:
+    except Exception:
         # Keep whatever headers have been set (e.g. cookies), but show a 500
         http.response.status = "500 Error"
         http.response.body = b"500 Error"
-        print(traceback.format_exc())
+        log(__file__, "ERROR:", traceback.format_exc())
     return http
 
 
@@ -110,7 +113,6 @@ def server(routes):
                     routes, method, path, query, request_headers, request_body
                 )
                 response_body_changed = False
-                # print(type(http.response.body), type(http.response.body) is str)
                 auto_content_type: bytes = None
                 if type(http.response.body) is Markup:
                     http.response.body = http.response.body.encode("utf8")
@@ -183,13 +185,13 @@ def server(routes):
             # The connection is already closed, nothing to do
             pass
         except BadRequest as e:
-            print(e)
+            log(__file__, "Bad Request ERROR:", e)
             response = b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 11\r\n\r\nBad Request"
             socket.sendall(response)
             reader.close()
         # https://stackoverflow.com/questions/7160983/catching-all-exceptions-in-python
-        except Exception as e:
-            print(traceback.format_exc())
+        except Exception:
+            log(__file__, "ERROR:", traceback.format_exc())
             response = b"HTTP/1.1 500 Error\r\nConnection: close\r\nContent-Length: 5\r\n\r\nError"
             socket.sendall(response)
             reader.close()

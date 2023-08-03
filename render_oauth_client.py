@@ -1,5 +1,6 @@
-from render import render_main
 from markupsafe import Markup, escape
+
+from render import render_main
 
 oauth_client_home_markup = Markup(
     """<p>
@@ -20,8 +21,3 @@ def render_oauth_client_success(jwt: str):
     return render_main(
         title="Success!", body=oauth_client_success_markup.format(jwt=jwt)
     )
-
-
-if __name__ == "__main__":
-    print(render_oauth_client_success(jwt="ey..."))
-    print(render_oauth_client_home(title="OAuth Client Home"))

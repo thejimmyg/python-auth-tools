@@ -79,6 +79,8 @@ python3 cli_oauth_client_flow_client_credentials.py client secret
 ## Dev
 
 ```sh
+isort .
+autoflake -r --in-place --remove-unused-variables .
 black .
 ```
 

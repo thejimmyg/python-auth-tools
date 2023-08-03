@@ -1,7 +1,6 @@
-import hashlib
 import gzip
+import hashlib
 import os
-
 
 etags: dict[tuple[str, str], str] = {}
 

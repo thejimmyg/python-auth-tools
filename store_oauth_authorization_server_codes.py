@@ -1,5 +1,6 @@
 import dbm
 import json
+
 from pydantic import BaseModel
 
 from config import oauth_authorization_server_store_codes_dbpath
@@ -35,16 +36,3 @@ def get_and_delete_code_value(code: str):
 def get_code_value(code: str):
     with dbm.open(oauth_authorization_server_store_codes_dbpath, "c") as db:
         return CodeValue(**json.loads(db[code.encode("utf8")].decode("utf8")))
-
-
-if __name__ == "__main__":
-    import helper_pkce
-
-    put_code_value(
-        "123",
-        CodeValue(
-            client_id="client_id",
-            code_challenge=helper_pkce.code_challenge(helper_pkce.code_verifier()),
-        ),
-    )
-    print(get_and_delete_code_value("123"))

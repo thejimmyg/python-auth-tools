@@ -24,7 +24,3 @@ main_markup = Markup(
 
 def render_main(title: str, body: Markup = Markup("")):
     return main_markup.format(title=title, body=body)
-
-
-if __name__ == "__main__":
-    print(render_main(title="main"))

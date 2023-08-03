@@ -1,12 +1,13 @@
 if __name__ == "__main__":
-    import sys
-    from helper_crypto import (
-        verify_jwt,
-        fetch_openid_configuration,
-        client_credentials_token,
-    )
-    import config
     import json
+    import sys
+
+    import config
+    from helper_crypto import (
+        client_credentials_token,
+        fetch_openid_configuration,
+        verify_jwt,
+    )
 
     issuer = config.url
     client = sys.argv[1]

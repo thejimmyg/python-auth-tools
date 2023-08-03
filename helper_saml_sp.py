@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from config import url
-from saml2 import BINDING_HTTP_POST, md, BINDING_HTTP_REDIRECT, samlp, xmldsig
+
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT, md, samlp, xmldsig
 from saml2.client import Saml2Client
 from saml2.config import Config
 from saml2.mdstore import InMemoryMetaData
 from saml2.sigver import get_xmlsec_binary
+
+from config import url
 
 
 @dataclass

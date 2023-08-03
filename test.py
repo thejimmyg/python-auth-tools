@@ -6,10 +6,175 @@ import subprocess
 import threading
 import time
 import urllib.request
-from helper_crypto import verify_jwt
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+
+import helper_pkce
+from helper_crypto import verify_jwt
+from render import render_main
+from render_oauth_client import render_oauth_client_home, render_oauth_client_success
+from render_oauth_resource_owner import render_oauth_resource_owner_home
+from render_saml_sp import render_saml_sp_success
+from store_oauth_authorization_server_codes import (
+    CodeValue,
+    get_and_delete_code_value,
+    put_code_value,
+)
+from store_oauth_authorization_server_session import (
+    SessionValue,
+    get_session_value,
+    put_session_value,
+)
+from store_oauth_client_flow_code_pkce_code_verifiers import (
+    get_and_delete_code_verifier_value,
+)
+
+
+def test_store():
+    # store_oauth_authorization_server_codes
+    code_challenge = helper_pkce.code_challenge(helper_pkce.code_verifier())
+    put_code_value(
+        "123",
+        CodeValue(
+            client_id="client_id",
+            code_challenge=code_challenge,
+        ),
+    )
+    v = get_and_delete_code_value("123")
+    assert v == CodeValue(
+        client_id="client_id",
+        code_challenge=code_challenge,
+        scopes=None,
+        state=None,
+        sub=None,
+    ), v
+
+    # store_oauth_authorization_server_session
+    code = helper_pkce.code_challenge(helper_pkce.code_verifier())
+    put_session_value(
+        "123",
+        SessionValue(
+            code=code,
+        ),
+    )
+    v = get_session_value("123")
+    assert v == SessionValue(code=code), v
+
+    # store_oauth_client_flow_code_pkce_code_verifiers
+
+
+def test_render():
+    assert (
+        render_main(title="main")
+        == """<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>main</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+    <main>
+        <h1>main</h1>
+        
+    </main>
+	<script src="/script.js"></script>
+  </body>
+</html>"""
+    ), render_main(title="main")
+
+    assert (
+        render_oauth_client_success(jwt="ey...")
+        == """<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Success!</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+    <main>
+        <h1>Success!</h1>
+        <p>Successfully logged in. Here's the access token: <span id="jwt">ey...</span></p>
+    </main>
+	<script src="/script.js"></script>
+  </body>
+</html>"""
+    ), render_oauth_client_success(jwt="ey...")
+    assert (
+        render_oauth_client_home(title="OAuth Client Home")
+        == """<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>OAuth Client Home</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+    <main>
+        <h1>OAuth Client Home</h1>
+        <p>
+    <a href="/oauth-client/login">Login without scopes</a>,  <a href="/oauth-client/login?scope=read">login with read scope</a>, <a href="/oauth-client/login?scope=no-such-scope">login with an invalid scope</a>, <a href="/saml2/login/">login with SAML</a>.</p>
+    </main>
+	<script src="/script.js"></script>
+  </body>
+</html>"""
+    ), render_oauth_client_home(title="OAuth Client Home")
+
+    assert (
+        render_oauth_resource_owner_home(title="OAuth Resource Owner Home")
+        == """<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>OAuth Resource Owner Home</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+    <main>
+        <h1>OAuth Resource Owner Home</h1>
+        <p>This is where the API V1 definitions will go.</p>
+    </main>
+	<script src="/script.js"></script>
+  </body>
+</html>"""
+    ), render_oauth_resource_owner_home(title="OAuth Resource Owner Home")
+
+    assert (
+        render_saml_sp_success(session_info={})
+        == """<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Success!</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+    <main>
+        <h1>Success!</h1>
+        <p>Successfully logged in with SAML. Here's the session info: <span id="session_info">{}</span></p>
+    </main>
+	<script src="/script.js"></script>
+  </body>
+</html>"""
+    ), render_saml_sp_success(session_info={})
 
 
 def oauth_client_flow_code_okce(driver, url):
@@ -104,7 +269,7 @@ def make_unauthenticated_request_to_oauth_resource_owner(url, token):
     )
     try:
         with urllib.request.urlopen(request) as fp:
-            response = json.loads(fp.read())
+            json.loads(fp.read())
     except urllib.error.HTTPError as e:
         error = e.read().decode("utf8")
         print(e, error)
@@ -177,6 +342,11 @@ def verify_jwt_proc(env, token):
 
 
 if __name__ == "__main__":
+    # Unit tests
+    test_render()
+    test_store()
+
+    # End to end
     port = 49152 + math.floor((65535 - 49152) * random.random())
     url = "http://localhost:" + str(port)
     store_dir = os.path.join("test", str(port), "store")

@@ -1,8 +1,10 @@
-from saml2 import BINDING_HTTP_POST, md, BINDING_HTTP_REDIRECT, samlp, xmldsig
-from helper_saml_sp import saml_client, IdPConfig
-import urllib.parse
-from render_saml_sp import render_saml_sp_success
 import json
+import urllib.parse
+
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT, md, samlp, xmldsig
+
+from helper_saml_sp import IdPConfig, saml_client
+from render_saml_sp import render_saml_sp_success
 
 
 def saml_login(http):

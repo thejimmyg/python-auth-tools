@@ -1,5 +1,6 @@
-from saml2 import md, BINDING_HTTP_REDIRECT, samlp, xmldsig
+from saml2 import BINDING_HTTP_REDIRECT, md, samlp, xmldsig
 from saml2.mdstore import InMemoryMetaData
+
 from helper_saml_sp import IdPConfig
 
 
