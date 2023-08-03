@@ -6,7 +6,7 @@ import subprocess
 import threading
 import time
 import urllib.request
-from cli_oauth_resource_owner_verify_jwt import verify_jwt
+from helper_crypto import verify_jwt
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -88,9 +88,9 @@ def make_authenticated_request_to_oauth_resource_owner(url, token):
         print(response)
         assert list(response.keys()) == ["claims"], response.keys()
         # This doesn't match because iat and exp will be different.
-        # assert json.dumps(response) == json.dumps({'claims': '{"aud": "client_id", "exp": 1690967312, "iat": 1690966712, "iss": "http://localhost:16001", "scope": "read", "sub": "sub"}'})
+        # assert json.dumps(response) == json.dumps({'claims': '{"aud": "client", "exp": 1690967312, "iat": 1690966712, "iss": "http://localhost:16001", "scope": "read", "sub": "sub"}'})
         claims = json.loads(response["claims"])
-        assert claims["aud"] == "client_id"
+        assert claims["aud"] == "client"
         assert claims["iss"] == url
         assert claims["scope"] == "read"
         assert claims["sub"] == "sub"
@@ -120,9 +120,6 @@ def generate_keys(env):
         ["python3", "cli_oauth_authorization_server_generate_keys.py"], env=env
     )
     assert private_key_process.wait() == 0
-    # -rw-r--r-- 1 james james  939 Aug  1 18:48 cli_oauth_authorization_server_sign_jwt.py
-    # -rw-r--r-- 1 james james  803 Aug  1 18:26 cli_oauth_client_flow_client_credentials.py
-    # -rw-r--r-- 1 james james 1539 Jul 28 11:13 cli_oauth_resource_owner_verify_jwt.py
     private_key_process.wait()
 
 
@@ -130,7 +127,13 @@ def sign_jwt_proc(env):
     print("About to sign JWT")
     print()
     sign_jwt_process = subprocess.Popen(
-        ["python3", "cli_oauth_authorization_server_sign_jwt.py"],
+        [
+            "python3",
+            "cli_oauth_authorization_server_sign_jwt.py",
+            "client",
+            "sub",
+            "read",
+        ],
         stdout=subprocess.PIPE,
         env=env,
     )
@@ -139,6 +142,25 @@ def sign_jwt_proc(env):
     print(stdout)
     token = stdout.decode("utf8").strip()
     return token
+
+
+def client_credentials_flow(env, client, secret):
+    print("About to run client credentials flow")
+    print()
+    client_credentials_process = subprocess.Popen(
+        ["python3", "cli_oauth_client_flow_client_credentials.py", client, secret],
+        stdout=subprocess.PIPE,
+        env=env,
+    )
+    (stdout, _) = client_credentials_process.communicate()
+    assert client_credentials_process.wait() == 0
+    print(stdout)
+    response = json.loads(stdout.decode("utf8").strip())
+    assert sorted(list(response.keys())) == ["access_token", "expires_in", "token_type"]
+    assert response["expires_in"] == 600
+    assert response["token_type"] == "bearer"
+    verify_jwt(response["access_token"])
+    return response["access_token"]
 
 
 def verify_jwt_proc(env, token):
@@ -186,7 +208,8 @@ if __name__ == "__main__":
     }
 
     generate_keys(env)
-    token = sign_jwt_proc(env)
+
+    code_flow_token = sign_jwt_proc(env)
 
     log_path = os.path.join(tmp_dir, "server.log")
     p = [None]
@@ -202,18 +225,36 @@ if __name__ == "__main__":
             stderr=log,
         )
 
-    t = threading.Thread(target=start_server, args=())
-    t.start()
+    server_thread = threading.Thread(target=start_server, args=())
+    server_thread.start()
     # Not ideal, but we need to wait for the server to start
-    time.sleep(3)
+    time.sleep(10)
 
-    verify_jwt_proc(env, token)
-    make_authenticated_request_to_oauth_resource_owner(url, token)
-    make_unauthenticated_request_to_oauth_resource_owner(url, token)
+    verify_jwt_proc(env, code_flow_token)
+    # {
+    #   "aud": "client",
+    #   "exp": 1691075255,
+    #   "iat": 1691074655,
+    #   "iss": "http://localhost:61022",
+    #   "scope": "read",
+    #   "sub": "sub"
+    # }
+    client_flow_token = client_credentials_flow(env, "client", "secret")
+    verify_jwt_proc(env, client_flow_token)
+    # {
+    #   "aud": "client",
+    #   "exp": 1691075259,
+    #   "iat": 1691074659,
+    #   "iss": "http://localhost:61022",
+    #   "sub": "client"
+    # }
+    for token in [code_flow_token]:
+        make_authenticated_request_to_oauth_resource_owner(url, token)
+        make_unauthenticated_request_to_oauth_resource_owner(url, token)
     driver = webdriver.Chrome()
     oauth_client_flow_code_okce(driver, url)
     saml_sp_flow(driver, url)
     p[0].kill()
-    t.join()
+    server_thread.join()
     driver.close()
     print("SUCCESS! Server logs in:", log_path)

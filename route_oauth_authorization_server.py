@@ -1,4 +1,4 @@
-from cli_oauth_authorization_server_sign_jwt import sign_jwt
+from helper_crypto import sign_jwt
 import urllib.parse
 from render import render_main
 from markupsafe import Markup

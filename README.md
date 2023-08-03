@@ -67,7 +67,7 @@ source .venv/bin/activate
 ```
 
 ```sh
-export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py` && echo $TOKEN
+export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py client sub "read"` && echo $TOKEN
 python3 cli_oauth_resource_owner_verify_jwt.py "$TOKEN"
 curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```

@@ -17,7 +17,7 @@ import urllib.parse
 import json
 import config
 
-from cli_oauth_resource_owner_verify_jwt import verify_jwt
+from helper_crypto import verify_jwt
 from helper_http import RespondEarly
 from render_oauth_client import render_oauth_client_success
 
