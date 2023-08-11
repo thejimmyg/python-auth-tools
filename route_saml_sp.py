@@ -1,9 +1,9 @@
 import json
 import urllib.parse
 
-from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT, md, samlp, xmldsig
+from saml2 import BINDING_HTTP_POST
 
-from helper_saml_sp import IdPConfig, saml_client
+from helper_saml_sp import saml_client
 from render_saml_sp import render_saml_sp_success
 
 

@@ -1,6 +1,6 @@
 import json
 
-from config import url
+from config_common import url
 from render_oauth_resource_owner import render_oauth_resource_owner_home
 
 

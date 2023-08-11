@@ -1,6 +1,7 @@
 /.mypy_cache
 /.venv
 /__pycache__
+/store
 /store/oauth_authorization_server/clients.json
 /store/oauth_authorization_server/code.db
 /store/oauth_authorization_server/jwks.json

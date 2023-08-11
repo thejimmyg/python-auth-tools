@@ -1,4 +1,6 @@
-from markupsafe import Markup, escape
+from markupsafe import Markup
+
+import plugins
 
 main_markup = Markup(
     """<!DOCTYPE html>
@@ -23,4 +25,4 @@ main_markup = Markup(
 
 
 def render_main(title: str, body: Markup = Markup("")):
-    return main_markup.format(title=title, body=body)
+    return plugins.main_markup.format(title=title, body=body)

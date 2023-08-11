@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 import helper_pkce
-from helper_crypto import verify_jwt
+from helper_oauth_resource_owner import verify_jwt
 from render import render_main
 from render_oauth_client import render_oauth_client_home, render_oauth_client_success
 from render_oauth_resource_owner import render_oauth_resource_owner_home
@@ -26,9 +26,6 @@ from store_oauth_authorization_server_session import (
     SessionValue,
     get_session_value,
     put_session_value,
-)
-from store_oauth_client_flow_code_pkce_code_verifiers import (
-    get_and_delete_code_verifier_value,
 )
 
 
@@ -349,6 +346,9 @@ def verify_jwt_proc(env, token):
 
 
 if __name__ == "__main__":
+    from helper_plugins import setup_plugins
+
+    setup_plugins("route_test")
     # Unit tests
     test_render()
     test_store()
@@ -396,7 +396,7 @@ if __name__ == "__main__":
         log = open(log_path, "wb")
         p[0] = subprocess.Popen(
             # Have to run Python in unbuffered mode (-u) to get the logs streaming to the log files
-            ["python3", "-u", "cli_serve_gevent.py"],
+            ["python3", "-u", "cli_serve_gevent.py", "route_test"],
             env=env,
             stdout=log,
             stderr=log,
@@ -405,7 +405,7 @@ if __name__ == "__main__":
     server_thread = threading.Thread(target=start_server, args=())
     server_thread.start()
     # Not ideal, but we need to wait for the server to start
-    time.sleep(10)
+    time.sleep(4)
 
     verify_jwt_proc(env, code_flow_token)
     make_authenticated_request_to_oauth_resource_owner(url, code_flow_token)

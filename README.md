@@ -47,7 +47,7 @@ python3 cli_oauth_authorization_server_generate_keys.py
 cat << EOF > ./store/oauth_authorization_server/clients.json
 {
     "client_credentials": {
-        "client": {"secret": "secret", "scopes": []}
+        "client": {"secret": "secret", "scopes": ["read"]}
     },
     "code": {
         "client": {"redirect_uri": "http://localhost:16001/oauth-client/callback"}
@@ -57,7 +57,7 @@ EOF
 ```
 
 ```sh
-python3 cli_serve_gevent.py
+python3 cli_serve_gevent.py route_test
 ```
 
 In the second terminal:
@@ -73,14 +73,14 @@ curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```
 
 ```sh
-python3 cli_oauth_client_flow_client_credentials.py client secret
+python3 cli_oauth_client_flow_client_credentials.py client secret read
 ```
 
 ## Dev
 
 ```sh
 isort .
-autoflake -r --in-place --remove-unused-variables .
+autoflake -r --in-place --remove-unused-variables --remove-all-unused-imports .
 black .
 ```
 
@@ -100,4 +100,6 @@ python3 test.py
 
 ## Contributions
 
-Contributions must be public domain or licensed under the MIT license.
+Contributions must be public domain or licensed under the MIT license as well
+as the AGPLv3, even though this code is AGPLv3. This allows for possible
+re-licening in future.

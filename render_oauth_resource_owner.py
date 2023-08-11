@@ -1,4 +1,4 @@
-from markupsafe import Markup, escape
+from markupsafe import Markup
 
 from render import render_main
 

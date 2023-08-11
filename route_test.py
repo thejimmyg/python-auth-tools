@@ -1,7 +1,7 @@
-import config
 from route_oauth_authorization_server import (
     oauth_authorization_server_authorize,
     oauth_authorization_server_consent,
+    oauth_authorization_server_jwks_json,
     oauth_authorization_server_login,
     oauth_authorization_server_openid_configuration,
     oauth_authorization_server_token,
@@ -27,10 +27,7 @@ routes = {
     "/api/v1": v1,
     "/api/openapi.json": oauth_resource_owner_openapi,
     "/static/file": static("static/file", "text/plain"),
-    "/.well-known/jwks.json": static(
-        config.oauth_authorization_server_jwks_json,
-        "application/json; charset=UTF8",
-    ),
+    "/.well-known/jwks.json": oauth_authorization_server_jwks_json,
     "/.well-known/openid-configuration": oauth_authorization_server_openid_configuration,
     "/oauth-client/login": oauth_client_flow_code_pkce_login,
     "/oauth-client/callback": oauth_client_flow_code_pkce_callback,

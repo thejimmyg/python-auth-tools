@@ -21,7 +21,6 @@ This module does a few things for us:
 import json
 import traceback
 
-from gevent.server import StreamServer
 from markupsafe import Markup
 
 from helper_http import Http, Request, RespondEarly, Response

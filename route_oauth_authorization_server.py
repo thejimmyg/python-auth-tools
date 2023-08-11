@@ -1,23 +1,21 @@
 import base64
 import json
 import urllib.parse
-from http import cookies
 
 from markupsafe import Markup
 
-import config
 import helper_pkce
-from config import (
-    clients_json_path,
-    host,
-    oauth_authorization_server_store_dir,
-    scheme,
-    store_dir,
+from config_common import url
+from config_oauth_authorization_server import (
+    oauth_authorization_server_clients_json_path,
+    oauth_authorization_server_jwks_json_path,
 )
-from helper_crypto import sign_jwt
 from helper_log import log
+from helper_oauth_authorization_server import sign_jwt
+from http_session import get_session_id, login
 from render import render_main
 from route_oauth_resource_owner_api import apis
+from route_static import static
 from store_oauth_authorization_server_codes import (
     CodeValue,
     get_and_delete_code_value,
@@ -39,7 +37,7 @@ for api in apis:
 log(__file__, "Available scopes:", available_scopes)
 
 
-with open(clients_json_path, "r") as fp:
+with open(oauth_authorization_server_clients_json_path, "r") as fp:
     parsed = json.loads(fp.read())
     client_credentials_clients = parsed["client_credentials"]
     code_clients = parsed["code"]
@@ -57,10 +55,10 @@ def _make_url(code, code_value):
 
 def oauth_authorization_server_openid_configuration(http):
     http.response.body = {
-        "issuer": config.url,
-        "authorization_endpoint": config.url + "/oauth/authorize",
-        "token_endpoint": config.url + "/oauth/token",
-        "jwks_uri": config.url + "/.well-known/jwks.json",
+        "issuer": url,
+        "authorization_endpoint": url + "/oauth/authorize",
+        "token_endpoint": url + "/oauth/token",
+        "jwks_uri": url + "/.well-known/jwks.json",
         "grant_types_supported": [
             "authorization_code",
             "client_credentials",
@@ -71,15 +69,6 @@ def oauth_authorization_server_openid_configuration(http):
     }
 
 
-def _get_session_id(http, name):
-    cookie = cookies.SimpleCookie()
-    if "cookie" in http.request.headers:
-        cookie.load(http.request.headers["cookie"])
-    if name in cookie:
-        return cookie[name].value
-    return None
-
-
 def _get_scopes(q):
     scopes = []
     if "scope" in q:
@@ -87,30 +76,6 @@ def _get_scopes(q):
             assert scope in available_scopes, "Not a known scope: " + scope
             scopes.append(scope)
     return scopes
-
-
-def _login(http, name):
-    session = helper_pkce.code_verifier()
-    cookie = cookies.SimpleCookie()
-    if "cookie" in http.request.headers:
-        cookie.load(http.request.headers["cookie"])
-    cookie[name] = session
-    # cookie['oauth']['expires'] =
-    cookie[name]["path"] = "/"
-    cookie[name]["comment"] = "upstream oauth"
-    cookie[name][
-        "domain"
-    ] = host  # Can't use the port here https://datatracker.ietf.org/doc/html/rfc2109.html#section-2
-    cookie[name]["max-age"] = 3600
-    cookie["oauth"]["secure"] = scheme == "https://"
-    cookie[name]["version"] = 1
-    cookie[name]["httponly"] = True
-    cookie[name]["samesite"] = "Strict"
-    parts = cookie.output().split(": ")
-    http.response.headers[parts[0].lower()] = ": ".join(parts[1:])
-    # Should check already set?
-    http.response.headers["cache-control"] = 'no-cache="set-cookie"'
-    return session
 
 
 def oauth_authorization_server_authorize(http):
@@ -136,7 +101,7 @@ def oauth_authorization_server_authorize(http):
     if "state" in q:
         assert len(q["state"]) == 1
         state = q["state"][0]
-    session_id = _get_session_id(http, "oauth")
+    session_id = get_session_id(http, "oauth")
     logged_in = False
     approved_scopes = False
     sub = None
@@ -161,7 +126,7 @@ def oauth_authorization_server_authorize(http):
         http.response.body = "Redirecting ..."
     else:
         # At this point we need some sort of session so that we can handle login interactions and then update the claims with the sub (and anything else)
-        session_id = _login(http, "oauth")
+        session_id = login(http, "oauth")
         put_session_value(session_id, SessionValue(code=new_code))
         http.response.body = Markup(
             '<html><head><meta http-equiv="refresh" content="0; url={path}"></head><body><a href="{path}"></a></body></html>'
@@ -169,7 +134,7 @@ def oauth_authorization_server_authorize(http):
 
 
 def oauth_authorization_server_login(http):
-    session_id = _get_session_id(http, "oauth")
+    session_id = get_session_id(http, "oauth")
     if not session_id:
         return
     sub = ""
@@ -304,3 +269,9 @@ def oauth_authorization_server_token(http):
         "token_type": "bearer",
         "expires_in": expires_in,
     }
+
+
+oauth_authorization_server_jwks_json = static(
+    oauth_authorization_server_jwks_json_path,
+    "application/json; charset=UTF8",
+)

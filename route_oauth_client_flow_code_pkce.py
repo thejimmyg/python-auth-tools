@@ -10,9 +10,8 @@ Steps:
 import json
 import urllib.parse
 
-import config
 import helper_pkce
-from helper_crypto import verify_jwt
+from config_common import url
 from helper_http import RespondEarly
 from helper_log import log
 from render_oauth_client import render_oauth_client_success
@@ -52,8 +51,8 @@ def oauth_client_flow_code_pkce_callback(http):
         assert len(q["state"]) == 1
     code_verifier = get_and_delete_code_verifier_value(q["state"][0]).code_verifier
     code = q["code"][0]
-    url = (
-        config.url
+    token_url = (
+        url
         + "/oauth/token?code_verifier="
         + urllib.parse.quote(code_verifier)
         + "&code="
@@ -61,19 +60,17 @@ def oauth_client_flow_code_pkce_callback(http):
         + "&grant_type=code"
     )
     # http.response.status = '302 Redirect'
-    # http.response.headers['location'] = url
+    # http.response.headers['location'] = token_url
     # http.response.body = b'Redirecting ...'
 
     # XXX Make this spec-compliant
     try:
-        log(__file__, "URL:", url)
-        with urllib.request.urlopen(url) as fp:
+        log(__file__, "URL:", token_url)
+        with urllib.request.urlopen(token_url) as fp:
             response = json.loads(fp.read())
             assert response["token_type"] == "bearer"
             access_token = response["access_token"]
             log(__file__, "Access token:", access_token)
-            # Not strictly necessary, but shouldn't hurt:
-            log(__file__, "Verified claims:", verify_jwt(access_token))
             http.response.body = render_oauth_client_success(jwt=access_token)
     except urllib.error.HTTPError as e:
         log(__file__, "ERROR:", e.read().decode())
@@ -105,8 +102,8 @@ def oauth_client_flow_code_pkce_login(http):
     # https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.1
     # Don't need state if using PKCE?
     client = "client"
-    url = (
-        config.url
+    authorize_url = (
+        url
         + "/oauth/authorize?response_type=code&state="
         + urllib.parse.quote(state)
         + "&client_id="
@@ -116,6 +113,6 @@ def oauth_client_flow_code_pkce_login(http):
         + "&code_challenge_method=S256"
     )
     if scope:
-        url += "&scope=" + urllib.parse.quote(scope)
-    http.response.headers["location"] = url
+        authorize_url += "&scope=" + urllib.parse.quote(scope)
+    http.response.headers["location"] = authorize_url
     http.response.body = "Redirecting ..."

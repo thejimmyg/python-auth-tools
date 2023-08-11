@@ -2,14 +2,11 @@ if __name__ == "__main__":
     import json
     import sys
 
-    import config
-    from helper_crypto import (
-        client_credentials_token,
-        fetch_openid_configuration,
-        verify_jwt,
-    )
+    from config_common import url
+    from helper_oauth_client import client_credentials_token
+    from helper_oidc import fetch_openid_configuration
 
-    issuer = config.url
+    issuer = url
     client = sys.argv[1]
     secret = sys.argv[2]
     scopes = sys.argv[3].strip().split(" ")

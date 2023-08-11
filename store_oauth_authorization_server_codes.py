@@ -3,7 +3,9 @@ import json
 
 from pydantic import BaseModel
 
-from config import oauth_authorization_server_store_codes_dbpath
+from config_oauth_authorization_server import (
+    oauth_authorization_server_store_codes_dbpath,
+)
 
 
 class CodeValue(BaseModel):
