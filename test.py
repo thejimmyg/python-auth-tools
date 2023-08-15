@@ -392,7 +392,9 @@ if __name__ == "__main__":
     p = [None]
 
     def start_server():
-        print(url, "logging to", log_path)
+        print()
+        print("===>", url, "logging to", log_path)
+        print()
         log = open(log_path, "wb")
         p[0] = subprocess.Popen(
             # Have to run Python in unbuffered mode (-u) to get the logs streaming to the log files

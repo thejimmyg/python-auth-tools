@@ -92,10 +92,10 @@ Install Chromium and Chromium Webdriver:
 apt install -y chromium chromium-driver python3-selenium
 ```
 
-Then run:
+Then run (deleting your existing stores):
 
 ```sh
-python3 test.py
+rm -rf ./store ./test ./tmp && python3 test.py
 ```
 
 ## Contributions
