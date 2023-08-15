@@ -278,12 +278,48 @@ def make_unauthenticated_request_to_oauth_resource_owner(url, token):
         )
 
 
-def generate_keys(env):
+def generate_keys_proc(env):
     private_key_process = subprocess.Popen(
         ["python3", "cli_oauth_authorization_server_generate_keys.py"], env=env
     )
     assert private_key_process.wait() == 0
     private_key_process.wait()
+
+
+def webhook_generate_keys_proc(env):
+    private_key_process = subprocess.Popen(
+        ["python3", "cli_webhook_generate_keys.py"], env=env
+    )
+    assert private_key_process.wait() == 0
+    private_key_process.wait()
+
+
+def webhook_sign_jwt_proc(env, payload):
+    print("About to sign webhook body")
+    print()
+    sign_jwt_process = subprocess.Popen(
+        ["python3", "cli_webhook_sign_jwt.py", payload],
+        stdout=subprocess.PIPE,
+        env=env,
+    )
+    (stdout, _) = sign_jwt_process.communicate()
+    assert sign_jwt_process.wait() == 0
+    print(stdout)
+    sig = stdout.decode("utf8").strip()
+    return sig
+
+
+def webhook_verify_jwt_proc(env, sig, body, jwks_url):
+    print("Verify JWT", sig, body, jwks_url)
+    print()
+    verify_jwt_process = subprocess.Popen(
+        ["python3", "cli_webhook_consumer_verify_jwt.py", sig, body, jwks_url],
+        stdout=subprocess.PIPE,
+        env=env,
+    )
+    (stdout, _) = verify_jwt_process.communicate()
+    assert verify_jwt_process.wait() == 0
+    print(stdout)
 
 
 def sign_jwt_proc(env):
@@ -384,9 +420,15 @@ if __name__ == "__main__":
         "TMP_DIR": tmp_dir,
     }
 
-    generate_keys(env)
-
+    generate_keys_proc(env)
     code_flow_token = sign_jwt_proc(env)
+
+    webhook_generate_keys_proc(env)
+    body = json.dumps({"hello": "world"})
+    sig = webhook_sign_jwt_proc(
+        env,
+        body,
+    )
 
     log_path = os.path.join(tmp_dir, "server.log")
     p = [None]
@@ -422,6 +464,13 @@ if __name__ == "__main__":
     # }
     client_flow_token = client_credentials_flow(env, "client", "secret", ["read"])
     verify_jwt_proc(env, client_flow_token)
+    try:
+        verify_jwt_proc(env, client_flow_token + "1")
+    except:
+        pass
+    else:
+        raise Exception("Invalid signature failed to raise an exception")
+
     make_authenticated_request_to_oauth_resource_owner(
         url, client_flow_token, expect_sub=False
     )
@@ -433,6 +482,19 @@ if __name__ == "__main__":
     #   "iss": "http://localhost:61022",
     #   "sub": "client"
     # }
+
+    webhook_verify_jwt_proc(
+        env, sig, body, jwks_url=url + "/.well-known/webhook-jwks.json"
+    )
+    try:
+        webhook_verify_jwt_proc(
+            env, sig + "1", body, jwks_url=url + "/.well-known/webhook-jwks.json"
+        )
+    except:
+        pass
+    else:
+        raise Exception("Invalid signature failed to raise an exception")
+
     driver = webdriver.Chrome()
     oauth_client_flow_code_okce(driver, url)
     saml_sp_flow(driver, url)

@@ -18,6 +18,7 @@ from route_oauth_resource_owner import (
 from route_oauth_resource_owner_api import v1
 from route_saml_sp import saml_acs, saml_login
 from route_static import static
+from route_webhook import webhook_jwks_json
 
 routes = {
     "/saml2/login/": saml_login,
@@ -28,6 +29,7 @@ routes = {
     "/api/openapi.json": oauth_resource_owner_openapi,
     "/static/file": static("static/file", "text/plain"),
     "/.well-known/jwks.json": oauth_authorization_server_jwks_json,
+    "/.well-known/webhook-jwks.json": webhook_jwks_json,
     "/.well-known/openid-configuration": oauth_authorization_server_openid_configuration,
     "/oauth-client/login": oauth_client_flow_code_pkce_login,
     "/oauth-client/callback": oauth_client_flow_code_pkce_callback,

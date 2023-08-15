@@ -15,6 +15,7 @@ from helper_oidc import fetch_openid_configuration
 #    public_key = jwk.JWK(**json.loads(fp.read())['keys'][0])
 
 # XXX Implement rate limiting on fetch and a cache
+# XXX Verify the issuer
 
 
 def verify_jwt(signed_jwt):
@@ -29,6 +30,7 @@ def verify_jwt(signed_jwt):
     log(__file__, "OpenID Configuration:", openid_configuration)
     with urllib.request.urlopen(openid_configuration["jwks_uri"]) as fp:
         jwks = json.loads(fp.read())
+        # XXX Match the right kid
         public_key = jwk.JWK(**jwks["keys"][0])
     jwstoken = jws.JWS()
     jwstoken.deserialize(signed_jwt)

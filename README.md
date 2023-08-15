@@ -73,6 +73,13 @@ curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```
 
 ```sh
+python3 cli_webhook_generate_keys.py
+export PAYLOAD='{"hello": "world"}'
+export SIG=`python3 cli_webhook_sign_jwt.py "$PAYLOAD"` && echo $SIG
+python3 cli_webhook_consumer_verify_jwt.py "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-jwks.json"
+```
+
+```sh
 python3 cli_oauth_client_flow_client_credentials.py client secret read
 ```
 
@@ -102,4 +109,4 @@ rm -rf ./store ./test ./tmp && python3 test.py
 
 Contributions must be public domain or licensed under the MIT license as well
 as the AGPLv3, even though this code is AGPLv3. This allows for possible
-re-licening in future.
+re-licensing in future.
