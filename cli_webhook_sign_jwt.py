@@ -3,4 +3,4 @@ if __name__ == "__main__":
 
     from helper_webhook import sign_jwt
 
-    print(sign_jwt(sys.argv[1]))
+    print(sign_jwt(sys.argv[1], sys.argv[2]))

@@ -23,6 +23,7 @@ from store_oauth_authorization_server_codes import (
     put_code_value,
     set_code_sub,
 )
+from store_oauth_authorization_server_keys import get_current_kid_value
 from store_oauth_authorization_server_session import (
     SessionValue,
     get_session_value,
@@ -272,7 +273,11 @@ def oauth_authorization_server_token(http):
     http.response.status = "200 OK"
     http.response.body = {
         "access_token": sign_jwt(
-            client_id=client_id, sub=sub, expires_in=expires_in, scopes=scopes
+            client_id=client_id,
+            sub=sub,
+            expires_in=expires_in,
+            scopes=scopes,
+            kid=get_current_kid_value(),
         ),
         "token_type": "bearer",
         "expires_in": expires_in,

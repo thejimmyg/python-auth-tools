@@ -4,14 +4,14 @@ if __name__ == "__main__":
 
     from config_common import url
     from helper_oauth_client import client_credentials_token
-    from helper_oidc import fetch_openid_configuration
+    from helper_oidc import fetch_and_cache_openid_configuration
 
     issuer = url
     client = sys.argv[1]
     secret = sys.argv[2]
     scopes = sys.argv[3].strip().split(" ")
 
-    openid_configuration = fetch_openid_configuration(issuer)
+    openid_configuration = fetch_and_cache_openid_configuration(issuer)
     print(
         json.dumps(
             client_credentials_token(

@@ -278,27 +278,43 @@ def make_unauthenticated_request_to_oauth_resource_owner(url, token):
         )
 
 
-def generate_keys_proc(env):
+def generate_keys_proc(env, kid):
     private_key_process = subprocess.Popen(
-        ["python3", "cli_oauth_authorization_server_generate_keys.py"], env=env
+        ["python3", "cli_oauth_authorization_server_generate_keys.py", kid], env=env
     )
     assert private_key_process.wait() == 0
     private_key_process.wait()
 
 
-def webhook_generate_keys_proc(env):
+def set_current_key_proc(env, kid):
+    set_current_key_process = subprocess.Popen(
+        ["python3", "cli_oauth_authorization_server_set_current_key.py", kid], env=env
+    )
+    assert set_current_key_process.wait() == 0
+    set_current_key_process.wait()
+
+
+def webhook_generate_keys_proc(env, kid):
     private_key_process = subprocess.Popen(
-        ["python3", "cli_webhook_generate_keys.py"], env=env
+        ["python3", "cli_webhook_generate_keys.py", kid], env=env
     )
     assert private_key_process.wait() == 0
     private_key_process.wait()
 
 
-def webhook_sign_jwt_proc(env, payload):
+def webhook_set_current_key_proc(env, kid):
+    set_current_key_process = subprocess.Popen(
+        ["python3", "cli_webhook_set_current_key.py", kid], env=env
+    )
+    assert set_current_key_process.wait() == 0
+    set_current_key_process.wait()
+
+
+def webhook_sign_jwt_proc(env, payload, kid):
     print("About to sign webhook body")
     print()
     sign_jwt_process = subprocess.Popen(
-        ["python3", "cli_webhook_sign_jwt.py", payload],
+        ["python3", "cli_webhook_sign_jwt.py", payload, kid],
         stdout=subprocess.PIPE,
         env=env,
     )
@@ -322,7 +338,7 @@ def webhook_verify_jwt_proc(env, sig, body, jwks_url):
     print(stdout)
 
 
-def sign_jwt_proc(env):
+def sign_jwt_proc(env, kid):
     print("About to sign JWT")
     print()
     sign_jwt_process = subprocess.Popen(
@@ -332,6 +348,7 @@ def sign_jwt_proc(env):
             "client",
             "sub",
             "read",
+            kid,
         ],
         stdout=subprocess.PIPE,
         env=env,
@@ -385,6 +402,7 @@ if __name__ == "__main__":
     from helper_plugins import setup_plugins
 
     setup_plugins("route_test")
+
     # Unit tests
     test_render()
     test_store()
@@ -419,16 +437,21 @@ if __name__ == "__main__":
         "STORE_DIR": store_dir,
         "TMP_DIR": tmp_dir,
     }
+    kid = "testoa"
+    generate_keys_proc(env, "before")
+    generate_keys_proc(env, kid)
+    set_current_key_proc(env, kid)
+    generate_keys_proc(env, "zafter")
 
-    generate_keys_proc(env)
-    code_flow_token = sign_jwt_proc(env)
+    code_flow_token = sign_jwt_proc(env, kid)
 
-    webhook_generate_keys_proc(env)
+    webhook_kid = "testw"
+    webhook_generate_keys_proc(env, "beforew")
+    webhook_generate_keys_proc(env, webhook_kid)
+    webhook_generate_keys_proc(env, "zafterw")
+    webhook_set_current_key_proc(env, webhook_kid)
     body = json.dumps({"hello": "world"})
-    sig = webhook_sign_jwt_proc(
-        env,
-        body,
-    )
+    sig = webhook_sign_jwt_proc(env, body, webhook_kid)
 
     log_path = os.path.join(tmp_dir, "server.log")
     p = [None]

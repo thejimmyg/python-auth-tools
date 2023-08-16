@@ -1,11 +1,13 @@
 import base64
 import json
-import urllib.request
 
 from jwcrypto import jwk, jws, jwt
 
 from helper_log import log
-from helper_oidc import fetch_openid_configuration
+from helper_oidc import (
+    fetch_and_cache_jwks_for_kid,
+    fetch_and_cache_openid_configuration,
+)
 
 #
 # Verify
@@ -26,31 +28,22 @@ def verify_jwt(signed_jwt):
         base64.b64decode(signed_jwt.split(".")[1] + "==").decode("utf8")
     )["iss"]
     log(__file__, "Issuer:", issuer)
-    openid_configuration = fetch_openid_configuration(issuer)
+    openid_configuration = fetch_and_cache_openid_configuration(issuer)
     log(__file__, "OpenID Configuration:", openid_configuration)
-    with urllib.request.urlopen(openid_configuration["jwks_uri"]) as fp:
-        jwks = json.loads(fp.read())
-        # XXX Match the right kid
-        public_key = jwk.JWK(**jwks["keys"][0])
+    jwks_url = openid_configuration["jwks_uri"]
     jwstoken = jws.JWS()
     jwstoken.deserialize(signed_jwt)
     log(__file__, "JOSE Header:", jwstoken.jose_header)
+    kid = jwstoken.jose_header["kid"]
+    jwks = fetch_and_cache_jwks_for_kid(jwks_url, kid)
+    public_key = None
+    for key in jwks["keys"]:
+        if key["kid"] == kid:
+            public_key = jwk.JWK(**key)
+            break
+    if public_key is None:
+        raise Exception(f"No such key '{kid}' found in the JWKS at '{jwks_url}'")
     ja = jwt.JWT(algs=["RS256"])
     ja.deserialize(signed_jwt, public_key)
     claims = ja.token.payload.decode()
-
-    # jwstoken.verify(public_key)
-    # payload = jwstoken.payload
-    # # XXX This doesn't check the claims or the encryption type
-    # claims = payload.decode()
-    # # This does:
-    # ET = jwt.JWT(key=public_key, jwt=signed_jwt)
     return json.loads(claims)
-
-
-# Failure
-# jwstoken = jws.JWS()
-# jwstoken.deserialize(signed_jwt+'q')
-# jwstoken.verify(key)
-# payload = jwstoken.payload
-# log(__file__, 'Decoded payload:', payload.decode())

@@ -2,6 +2,8 @@ import gzip
 import hashlib
 import os
 
+from config_common import gzipped_dir
+
 etags: dict[tuple[str, str], str] = {}
 
 

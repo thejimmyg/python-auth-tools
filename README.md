@@ -12,6 +12,10 @@ They probably aren't much use to you.
 
 See [https://www.oauth.com/oauth2-servers/definitions/](https://www.oauth.com/oauth2-servers/definitions/)
 
+## NTP
+
+You need to be running an NTP daemon (and may need to restart it if you see drift) otherwise the SAML flow might fail because the token is issued by the remote server before your computer's current time.
+
 ## Config
 
 Optional:
@@ -43,7 +47,8 @@ source .venv/bin/activate
 
 ```sh
 mkdir -p ./store/oauth_authorization_server
-python3 cli_oauth_authorization_server_generate_keys.py
+python3 cli_oauth_authorization_server_generate_keys.py test
+python3 cli_oauth_authorization_server_set_current_key.py test
 cat << EOF > ./store/oauth_authorization_server/clients.json
 {
     "client_credentials": {
@@ -67,15 +72,16 @@ source .venv/bin/activate
 ```
 
 ```sh
-export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py client sub "read"` && echo $TOKEN
+export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py client sub "read" test` && echo $TOKEN
 python3 cli_oauth_resource_owner_verify_jwt.py "$TOKEN"
 curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```
 
 ```sh
-python3 cli_webhook_generate_keys.py
+python3 cli_webhook_generate_keys.py test
+python3 cli_webhook_set_current_key.py test
 export PAYLOAD='{"hello": "world"}'
-export SIG=`python3 cli_webhook_sign_jwt.py "$PAYLOAD"` && echo $SIG
+export SIG=`python3 cli_webhook_sign_jwt.py "$PAYLOAD" test` && echo $SIG
 python3 cli_webhook_consumer_verify_jwt.py "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-jwks.json"
 ```
 
@@ -104,6 +110,48 @@ Then run (deleting your existing stores):
 ```sh
 rm -rf ./store ./test ./tmp && python3 test.py
 ```
+
+## Using this via a git submodule
+
+```sh
+git init
+git submodule add https://github.com/thejimmyg/python-auth-tools
+git add .gitmodules python-auth-tools
+git commit -m 'Initialised project'
+```
+
+After cloning a repo with submodules, or if you want to update the submodule to the latest commit, run:
+
+```sh
+git submodule update
+```
+
+Or during development just symlink this project somewhere:
+
+```sh
+ln -s ../python-auth-tools python-auth-tools
+```
+
+Create you own plugin:
+
+```sh
+cat << EOF > my_app.py
+from route_static import static
+
+routes = {
+    "/": static("python-auth-tools/static/file", "text/plain"),
+}
+EOF
+```
+
+Then you can use the files by adjusting your `PYTHONPATH`:
+
+```sh
+export PYTHONPATH="${PWD}:${PWD}/python-auth-tools:${PYTHONPATH}"
+python3 python-auth-tools/cli_serve_gevent.py my_app
+```
+
+See [https://git-scm.com/book/en/v2/Git-Tools-Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) and [https://docs.python.org/3/using/cmdline.html#envvar-PYTHONPATH](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONPATH)
 
 ## Contributions
 

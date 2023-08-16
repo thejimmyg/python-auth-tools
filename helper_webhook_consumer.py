@@ -1,10 +1,9 @@
 import base64
-import json
-import urllib.request
 
 from jwcrypto import jwk, jws, jwt
 
 from helper_log import log
+from helper_oidc import fetch_and_cache_jwks_for_kid
 
 #
 # Verify
@@ -27,13 +26,18 @@ def verify_jwt(sig, body, jwks_url):
         + signed_jwt_parts[2]
     )
     log(__file__, "Signed JWT:", signed_jwt)
-    with urllib.request.urlopen(jwks_url) as fp:
-        jwks = json.loads(fp.read())
-        # XXX Match the right kid
-        public_key = jwk.JWK(**jwks["keys"][0])
     jwstoken = jws.JWS()
     jwstoken.deserialize(signed_jwt)
     log(__file__, "JOSE Header:", jwstoken.jose_header)
+    kid = jwstoken.jose_header["kid"]
+    jwks = fetch_and_cache_jwks_for_kid(jwks_url, kid)
+    public_key = None
+    for key in jwks["keys"]:
+        if key["kid"] == kid:
+            public_key = jwk.JWK(**key)
+            break
+    if public_key is None:
+        raise Exception(f"No such key '{kid}' found in the JWKS at '{jwks_url}'")
     ja = jwt.JWT(algs=["RS256"])
     ja.deserialize(signed_jwt, public_key)
     result = ja.token.payload.decode()
