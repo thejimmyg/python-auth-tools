@@ -59,7 +59,8 @@ def test_store():
     v = get_session_value("123")
     assert v == SessionValue(code=code), v
 
-    # store_oauth_client_flow_code_pkce_code_verifiers
+    # store_oauth_client_flow_code_pkce_code_verifier
+    # XXX
 
 
 def test_render():
@@ -280,7 +281,13 @@ def make_unauthenticated_request_to_oauth_resource_owner(url, token):
 
 def generate_keys_proc(env, kid):
     private_key_process = subprocess.Popen(
-        ["python3", "cli_oauth_authorization_server_generate_keys.py", kid], env=env
+        [
+            "python3",
+            "cli_oauth_authorization_server_generate_keys.py",
+            "route_test",
+            kid,
+        ],
+        env=env,
     )
     assert private_key_process.wait() == 0
     private_key_process.wait()
@@ -288,7 +295,13 @@ def generate_keys_proc(env, kid):
 
 def set_current_key_proc(env, kid):
     set_current_key_process = subprocess.Popen(
-        ["python3", "cli_oauth_authorization_server_set_current_key.py", kid], env=env
+        [
+            "python3",
+            "cli_oauth_authorization_server_set_current_key.py",
+            "route_test",
+            kid,
+        ],
+        env=env,
     )
     assert set_current_key_process.wait() == 0
     set_current_key_process.wait()
@@ -296,7 +309,7 @@ def set_current_key_proc(env, kid):
 
 def webhook_generate_keys_proc(env, kid):
     private_key_process = subprocess.Popen(
-        ["python3", "cli_webhook_generate_keys.py", kid], env=env
+        ["python3", "cli_webhook_generate_keys.py", "route_test", kid], env=env
     )
     assert private_key_process.wait() == 0
     private_key_process.wait()
@@ -304,7 +317,7 @@ def webhook_generate_keys_proc(env, kid):
 
 def webhook_set_current_key_proc(env, kid):
     set_current_key_process = subprocess.Popen(
-        ["python3", "cli_webhook_set_current_key.py", kid], env=env
+        ["python3", "cli_webhook_set_current_key.py", "route_test", kid], env=env
     )
     assert set_current_key_process.wait() == 0
     set_current_key_process.wait()
@@ -454,14 +467,15 @@ if __name__ == "__main__":
     sig = webhook_sign_jwt_proc(env, body, webhook_kid)
 
     log_path = os.path.join(tmp_dir, "server.log")
-    p = [None]
+    p = None
 
     def start_server():
+        global p
         print()
         print("===>", url, "logging to", log_path)
         print()
         log = open(log_path, "wb")
-        p[0] = subprocess.Popen(
+        p = subprocess.Popen(
             # Have to run Python in unbuffered mode (-u) to get the logs streaming to the log files
             ["python3", "-u", "cli_serve_gevent.py", "route_test"],
             env=env,
@@ -521,7 +535,7 @@ if __name__ == "__main__":
     driver = webdriver.Chrome()
     oauth_client_flow_code_okce(driver, url)
     saml_sp_flow(driver, url)
-    p[0].kill()
+    p.kill()
     server_thread.join()
     driver.close()
     print("SUCCESS! Server logs in:", log_path)

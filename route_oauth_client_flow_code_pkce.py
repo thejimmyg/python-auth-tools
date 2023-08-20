@@ -15,7 +15,7 @@ from config_common import url
 from helper_http import RespondEarly
 from helper_log import log
 from render_oauth_client import render_oauth_client_success
-from store_oauth_client_flow_code_pkce_code_verifiers import (
+from store_oauth_client_flow_code_pkce_code_verifier import (
     CodeVerifierValue,
     get_and_delete_code_verifier_value,
     put_code_verifier_value,

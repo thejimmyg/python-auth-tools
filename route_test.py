@@ -39,3 +39,37 @@ routes = {
     # "/oauth/logout": oauth_logout,
     "/oauth/token": oauth_authorization_server_token,
 }
+
+
+from store_oauth_authorization_server_codes import (
+    oauth_authorization_server_codes_cleanup,
+    oauth_authorization_server_codes_init,
+)
+from store_oauth_authorization_server_keys import (
+    oauth_authorization_server_keys_cleanup,
+    oauth_authorization_server_keys_init,
+)
+from store_oauth_authorization_server_session import (
+    oauth_authorization_server_session_cleanup,
+    oauth_authorization_server_session_init,
+)
+from store_oauth_client_flow_code_pkce_code_verifier import (
+    oauth_client_flow_code_pkce_code_verifier_cleanup,
+    oauth_client_flow_code_pkce_code_verifier_init,
+)
+from store_webhook_server_keys import webhook_keys_cleanup, webhook_keys_init
+
+init = [
+    oauth_authorization_server_codes_init,
+    oauth_authorization_server_keys_init,
+    oauth_authorization_server_session_init,
+    webhook_keys_init,
+    oauth_client_flow_code_pkce_code_verifier_init,
+]
+cleanup = [
+    oauth_authorization_server_codes_cleanup,
+    oauth_authorization_server_keys_cleanup,
+    oauth_authorization_server_session_cleanup,
+    webhook_keys_cleanup,
+    oauth_client_flow_code_pkce_code_verifier_cleanup,
+]

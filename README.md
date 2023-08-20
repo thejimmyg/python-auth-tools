@@ -47,8 +47,8 @@ source .venv/bin/activate
 
 ```sh
 mkdir -p ./store/oauth_authorization_server
-python3 cli_oauth_authorization_server_generate_keys.py test
-python3 cli_oauth_authorization_server_set_current_key.py test
+python3 cli_oauth_authorization_server_generate_keys.py route_test test
+python3 cli_oauth_authorization_server_set_current_key.py route_test test
 cat << EOF > ./store/oauth_authorization_server/clients.json
 {
     "client_credentials": {
@@ -78,8 +78,8 @@ curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```
 
 ```sh
-python3 cli_webhook_generate_keys.py test
-python3 cli_webhook_set_current_key.py test
+python3 cli_webhook_generate_keys.py route_test test
+python3 cli_webhook_set_current_key.py route_test test
 export PAYLOAD='{"hello": "world"}'
 export SIG=`python3 cli_webhook_sign_jwt.py "$PAYLOAD" test` && echo $SIG
 python3 cli_webhook_consumer_verify_jwt.py "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-jwks.json"
@@ -87,14 +87,6 @@ python3 cli_webhook_consumer_verify_jwt.py "$SIG" "$PAYLOAD" "http://localhost:1
 
 ```sh
 python3 cli_oauth_client_flow_client_credentials.py client secret read
-```
-
-## Dev
-
-```sh
-isort .
-autoflake -r --in-place --remove-unused-variables --remove-all-unused-imports .
-black .
 ```
 
 ## Test
@@ -108,6 +100,7 @@ apt install -y chromium chromium-driver python3-selenium
 Then run (deleting your existing stores):
 
 ```sh
+sudo systemctl restart ntp
 rm -rf ./store ./test ./tmp && python3 test.py
 ```
 
@@ -158,3 +151,9 @@ See [https://git-scm.com/book/en/v2/Git-Tools-Submodules](https://git-scm.com/bo
 Contributions must be public domain or licensed under the MIT license as well
 as the AGPLv3, even though this code is AGPLv3. This allows for possible
 re-licensing in future.
+
+## Dev
+
+```sh
+isort . &&  autoflake -r --in-place --remove-unused-variables --remove-all-unused-imports . && black .
+```

@@ -23,7 +23,7 @@ from store_oauth_authorization_server_codes import (
     put_code_value,
     set_code_sub,
 )
-from store_oauth_authorization_server_keys import get_current_kid_value
+from store_oauth_authorization_server_keys import get_and_cache_current_kid_value
 from store_oauth_authorization_server_session import (
     SessionValue,
     get_session_value,
@@ -38,20 +38,23 @@ for api in apis:
 log(__file__, "Available scopes:", available_scopes)
 
 
-code_clients = [None]
-client_credentials_clients = [None]
+code_clients = None
+client_credentials_clients = None
 
 
 def _ensure_clients_loaded():
-    if not code_clients[0]:
+    global code_clients
+    global client_credentials_clients
+    if not code_clients:
         with open(oauth_authorization_server_clients_json_path, "r") as fp:
             parsed = json.loads(fp.read())
-            client_credentials_clients[0] = parsed["client_credentials"]
-            code_clients[0] = parsed["code"]
+            client_credentials_clients = parsed["client_credentials"]
+            code_clients = parsed["code"]
 
 
 def _make_url(code, code_value):
-    url = code_clients[0][code_value.client_id]["redirect_uri"] + "?"
+    global code_clients
+    url = code_clients[code_value.client_id]["redirect_uri"] + "?"
     if code_value.state:
         url += "state=" + urllib.parse.quote(code_value.state)
         url += "&code=" + urllib.parse.quote(code)
@@ -103,7 +106,7 @@ def oauth_authorization_server_authorize(http):
     assert len(q["code_challenge"]) == 1
     assert len(q["client_id"]) == 1
     client_id = q["client_id"][0]
-    assert client_id in code_clients[0], "Unknown client"
+    assert client_id in code_clients, "Unknown client"
     scopes = _get_scopes(q)
     state = None
     if "state" in q:
@@ -186,6 +189,7 @@ def oauth_authorization_server_consent(http):
 
 
 def oauth_authorization_server_token(http):
+    global client_credentials_clients
     _ensure_clients_loaded()
     # For client credentials
     # See https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
@@ -232,13 +236,13 @@ def oauth_authorization_server_token(http):
         client_id, secret = base64.b64decode(creds[6:] + "==").decode("utf8").split(":")
         # XXX This isn't quite right
         sub = client_id
-        if secret != client_credentials_clients[0][client_id]["secret"]:
+        if secret != client_credentials_clients[client_id]["secret"]:
             http.response.body = {
                 "error": "invalid_client",
                 "error_description": "Invalid credentials",
             }
             return
-        allowed_scopes = client_credentials_clients[0][client_id]["scopes"]
+        allowed_scopes = client_credentials_clients[client_id]["scopes"]
         scopes = _get_scopes(q)
         for scope in scopes:
             assert (
@@ -277,7 +281,7 @@ def oauth_authorization_server_token(http):
             sub=sub,
             expires_in=expires_in,
             scopes=scopes,
-            kid=get_current_kid_value(),
+            kid=get_and_cache_current_kid_value(),
         ),
         "token_type": "bearer",
         "expires_in": expires_in,
