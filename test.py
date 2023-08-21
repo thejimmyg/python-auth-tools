@@ -279,6 +279,36 @@ def make_unauthenticated_request_to_oauth_resource_owner(url, token):
         )
 
 
+def put_client_code_proc(env, url):
+    put_client_code_process = subprocess.Popen(
+        [
+            "python3",
+            "cli_oauth_authorization_server_put_code_client.py",
+            "route_test",
+            "client",
+            url + "/oauth-client/callback",
+            "read",
+        ],
+        env=env,
+    )
+    assert put_client_code_process.wait() == 0
+
+
+def put_client_client_credentials_proc(env):
+    put_client_client_credentials_process = subprocess.Popen(
+        [
+            "python3",
+            "cli_oauth_authorization_server_put_client_credentials_client.py",
+            "route_test",
+            "client",
+            "secret",
+            "read",
+        ],
+        env=env,
+    )
+    assert put_client_client_credentials_process.wait() == 0
+
+
 def generate_keys_proc(env, kid):
     private_key_process = subprocess.Popen(
         [
@@ -290,7 +320,6 @@ def generate_keys_proc(env, kid):
         env=env,
     )
     assert private_key_process.wait() == 0
-    private_key_process.wait()
 
 
 def set_current_key_proc(env, kid):
@@ -304,7 +333,6 @@ def set_current_key_proc(env, kid):
         env=env,
     )
     assert set_current_key_process.wait() == 0
-    set_current_key_process.wait()
 
 
 def webhook_generate_keys_proc(env, kid):
@@ -312,7 +340,6 @@ def webhook_generate_keys_proc(env, kid):
         ["python3", "cli_webhook_generate_keys.py", "route_test", kid], env=env
     )
     assert private_key_process.wait() == 0
-    private_key_process.wait()
 
 
 def webhook_set_current_key_proc(env, kid):
@@ -320,7 +347,6 @@ def webhook_set_current_key_proc(env, kid):
         ["python3", "cli_webhook_set_current_key.py", "route_test", kid], env=env
     )
     assert set_current_key_process.wait() == 0
-    set_current_key_process.wait()
 
 
 def webhook_sign_jwt_proc(env, payload, kid):
@@ -429,32 +455,21 @@ if __name__ == "__main__":
     tmp_dir = os.path.join("test", str(port), "tmp")
     os.makedirs(tmp_dir, exist_ok=True)
     os.makedirs(os.path.join(store_dir, "oauth_authorization_server"), exist_ok=True)
-    with open(
-        os.path.join(store_dir, "oauth_authorization_server", "clients.json"), "w"
-    ) as fp:
-        fp.write(
-            json.dumps(
-                {
-                    "client_credentials": {
-                        "client": {"secret": "secret", "scopes": ["read"]}
-                    },
-                    "code": {
-                        "client": {"redirect_uri": url + "/oauth-client/callback"}
-                    },
-                }
-            )
-        )
     env = {
         "PATH": os.environ["PATH"],
         "URL": url,
         "STORE_DIR": store_dir,
         "TMP_DIR": tmp_dir,
     }
+
+    put_client_code_proc(env, url)
+    put_client_client_credentials_proc(env)
+
     kid = "testoa"
-    generate_keys_proc(env, "before")
+    # generate_keys_proc(env, "before")
     generate_keys_proc(env, kid)
     set_current_key_proc(env, kid)
-    generate_keys_proc(env, "zafter")
+    # generate_keys_proc(env, "zafter")
 
     code_flow_token = sign_jwt_proc(env, kid)
 

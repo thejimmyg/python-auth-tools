@@ -41,6 +41,14 @@ routes = {
 }
 
 
+from store_oauth_authorization_server_clients_client_credentials import (
+    oauth_authorization_server_clients_client_credentials_cleanup,
+    oauth_authorization_server_clients_client_credentials_init,
+)
+from store_oauth_authorization_server_clients_code import (
+    oauth_authorization_server_clients_code_cleanup,
+    oauth_authorization_server_clients_code_init,
+)
 from store_oauth_authorization_server_codes import (
     oauth_authorization_server_codes_cleanup,
     oauth_authorization_server_codes_init,
@@ -65,6 +73,8 @@ init = [
     oauth_authorization_server_session_init,
     webhook_keys_init,
     oauth_client_flow_code_pkce_code_verifier_init,
+    oauth_authorization_server_clients_client_credentials_init,
+    oauth_authorization_server_clients_code_init,
 ]
 cleanup = [
     oauth_authorization_server_codes_cleanup,
@@ -72,4 +82,6 @@ cleanup = [
     oauth_authorization_server_session_cleanup,
     webhook_keys_cleanup,
     oauth_client_flow_code_pkce_code_verifier_cleanup,
+    oauth_authorization_server_clients_client_credentials_cleanup,
+    oauth_authorization_server_clients_code_cleanup,
 ]

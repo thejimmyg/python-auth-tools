@@ -16,6 +16,10 @@ See [https://www.oauth.com/oauth2-servers/definitions/](https://www.oauth.com/oa
 
 You need to be running an NTP daemon (and may need to restart it if you see drift) otherwise the SAML flow might fail because the token is issued by the remote server before your computer's current time.
 
+## Thread Safety
+
+This code is not designed to be run in a multi-threaded environment. It should either be served in a single process using `gevent`, or something like a lambda function. That is not to say it doesn't use threads itself, it does, although under `gevent` these get run as eventlets anyway after the monkey patch.
+
 ## Config
 
 Optional:
@@ -46,19 +50,10 @@ source .venv/bin/activate
 ```
 
 ```sh
-mkdir -p ./store/oauth_authorization_server
+python3 cli_oauth_authorization_server_put_client_credentials_client.py route_test client secret read
+python3 cli_oauth_authorization_server_put_code_client.py route_test client http://localhost:16001/oauth-client/callback read
 python3 cli_oauth_authorization_server_generate_keys.py route_test test
 python3 cli_oauth_authorization_server_set_current_key.py route_test test
-cat << EOF > ./store/oauth_authorization_server/clients.json
-{
-    "client_credentials": {
-        "client": {"secret": "secret", "scopes": ["read"]}
-    },
-    "code": {
-        "client": {"redirect_uri": "http://localhost:16001/oauth-client/callback"}
-    }
-}
-EOF
 ```
 
 ```sh

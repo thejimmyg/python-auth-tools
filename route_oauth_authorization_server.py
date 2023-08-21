@@ -1,21 +1,21 @@
 import base64
-import json
 import urllib.parse
 
 from markupsafe import Markup
 
 import helper_pkce
 from config_common import url
-from config_oauth_authorization_server import (
-    oauth_authorization_server_clients_json_path,
-    oauth_authorization_server_jwks_json_path,
-)
+from config_oauth_authorization_server import oauth_authorization_server_jwks_json_path
 from helper_log import log
 from helper_oauth_authorization_server import sign_jwt
 from http_session import get_session_id, login
 from render import render_main
 from route_oauth_resource_owner_api import apis
 from route_static import static
+from store_oauth_authorization_server_clients_client_credentials import (
+    get_client_credentials_client,
+)
+from store_oauth_authorization_server_clients_code import get_code_client
 from store_oauth_authorization_server_codes import (
     CodeValue,
     get_and_delete_code_value,
@@ -38,23 +38,8 @@ for api in apis:
 log(__file__, "Available scopes:", available_scopes)
 
 
-code_clients = None
-client_credentials_clients = None
-
-
-def _ensure_clients_loaded():
-    global code_clients
-    global client_credentials_clients
-    if not code_clients:
-        with open(oauth_authorization_server_clients_json_path, "r") as fp:
-            parsed = json.loads(fp.read())
-            client_credentials_clients = parsed["client_credentials"]
-            code_clients = parsed["code"]
-
-
-def _make_url(code, code_value):
-    global code_clients
-    url = code_clients[code_value.client_id]["redirect_uri"] + "?"
+def _make_url(code, code_value, redirect_uri):
+    url = redirect_uri + "?"
     if code_value.state:
         url += "state=" + urllib.parse.quote(code_value.state)
         url += "&code=" + urllib.parse.quote(code)
@@ -89,7 +74,6 @@ def _get_scopes(q):
 
 
 def oauth_authorization_server_authorize(http):
-    _ensure_clients_loaded()
     q = urllib.parse.parse_qs(
         http.request.query,
         keep_blank_values=False,
@@ -106,8 +90,10 @@ def oauth_authorization_server_authorize(http):
     assert len(q["code_challenge"]) == 1
     assert len(q["client_id"]) == 1
     client_id = q["client_id"][0]
-    assert client_id in code_clients, "Unknown client"
+    client = get_code_client(client_id)
     scopes = _get_scopes(q)
+    # XXX Assert scopes are allowed in the client
+    assert client.scopes, client.scopes
     state = None
     if "state" in q:
         assert len(q["state"]) == 1
@@ -131,7 +117,7 @@ def oauth_authorization_server_authorize(http):
     put_code_value(new_code, code_value)
     if logged_in and approved_scopes:
         # We know the sub, so we can issue the code
-        url = _make_url(new_code, code_value)
+        url = _make_url(new_code, code_value, client.redirect_uri)
         http.response.status = "302 Redirect"
         http.response.headers["location"] = url
         http.response.body = "Redirecting ..."
@@ -175,8 +161,10 @@ def oauth_authorization_server_login(http):
         session = get_session_value(session_id)
         set_code_sub(session.code, sub)
         # XXX This should actually lookup consent, and if needed redirect to the consent screen
-
-        url = _make_url(session.code, get_code_value(session.code))
+        code_value = get_code_value(session.code)
+        url = _make_url(
+            session.code, code_value, get_code_client(code_value.client_id).redirect_uri
+        )
         http.response.status = "302 Redirect"
         http.response.headers["location"] = url
         http.response.body = "Redirecting ..."
@@ -189,8 +177,6 @@ def oauth_authorization_server_consent(http):
 
 
 def oauth_authorization_server_token(http):
-    global client_credentials_clients
-    _ensure_clients_loaded()
     # For client credentials
     # See https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
     # grant_type=client_credentials
@@ -236,13 +222,14 @@ def oauth_authorization_server_token(http):
         client_id, secret = base64.b64decode(creds[6:] + "==").decode("utf8").split(":")
         # XXX This isn't quite right
         sub = client_id
-        if secret != client_credentials_clients[client_id]["secret"]:
+        client = get_client_credentials_client(client_id)
+        if secret != client.client_secret:
             http.response.body = {
                 "error": "invalid_client",
                 "error_description": "Invalid credentials",
             }
             return
-        allowed_scopes = client_credentials_clients[client_id]["scopes"]
+        allowed_scopes = client.scopes
         scopes = _get_scopes(q)
         for scope in scopes:
             assert (

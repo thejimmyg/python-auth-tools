@@ -10,8 +10,15 @@ oauth_authorization_server_private_keys_dir_path = os.path.join(
     oauth_authorization_server_store_dir, "private_keys"
 )
 os.makedirs(oauth_authorization_server_private_keys_dir_path, exist_ok=True)
-oauth_authorization_server_clients_json_path = os.path.join(
-    oauth_authorization_server_store_dir, "clients.json"
+oauth_authorization_server_clients_dir_path = os.path.join(
+    oauth_authorization_server_store_dir, "clients"
+)
+os.makedirs(oauth_authorization_server_clients_dir_path, exist_ok=True)
+oauth_authorization_server_clients_client_credentials_dbpath = os.path.join(
+    oauth_authorization_server_store_dir, "clients", "client_credentials"
+)
+oauth_authorization_server_clients_code_dbpath = os.path.join(
+    oauth_authorization_server_store_dir, "clients", "code"
 )
 oauth_authorization_server_store_codes_dbpath = os.path.join(
     oauth_authorization_server_store_dir, "code"
