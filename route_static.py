@@ -1,8 +1,13 @@
 import gzip
 import hashlib
 import os
+import urllib.parse
 
 from config_common import gzipped_dir
+
+# XXX There is a bug in static() where if the source file mtime changes, it is still serving the old cached version with the etag. We probably don't want it to do that.
+
+# XXX There is also a bug in that static_dir and static_dir_gz don't use etag caching, but should
 
 etags: dict[tuple[str, str], str] = {}
 
@@ -43,10 +48,48 @@ def static(filename, content_type):
     return static_filename
 
 
+def static_gz_dir(url, path, content_type, ext):
+    "This is for a static directory of files of the same content type, where the content is alredy gzipped. No etag caching is done."
+    def static_gz_dir_handler(http):
+        print(path, http.request.path)
+        assert http.request.path.endswith(ext)
+        assert http.request.path.startswith(url)
+        filename = path + urllib.parse.unquote(http.request.path[len(url) :])
+        http.response.headers["content-type"] = content_type
+        http.response.headers["content-encoding"] = "gzip"
+        with open(filename, "rb") as fp:
+            http.response.body = fp.read()
+        http.response.headers["content-length"] = len(http.response.body)
+
+    return static_gz_dir_handler
+
+
+def static_dir(url, path, content_type, ext):
+    "This is for a static directory of files of the same content type. No etag caching is done."
+    def static_dir_handler(http):
+        print(path, http.request.path)
+        assert http.request.path.endswith(ext)
+        assert http.request.path.startswith(url)
+        filename = path + urllib.parse.unquote(http.request.path[len(url) :])
+        http.response.headers["content-type"] = content_type
+        with open(filename, "rb") as fp:
+            http.response.body = fp.read()
+        http.response.headers["content-length"] = len(http.response.body)
+
+    return static_dir_handler
+
+
+
 if __name__ == "__main__":
     """
     curl -v "${URL}/static/file"
     curl -v -H 'If-None-Match: bbe02f946d5455d74616fc9777557c22' "${URL}/static/file"
     curl -v -H 'Accept-Encoding: gzip' "${URL}/static/file" > ./tmp/file.gz
     curl -v -H 'Accept-Encoding: gzip' -H 'If-None-Match: 2e17f4f8cdfe3013ebffa6b4805b1764' "${URL}/static/file" > ./tmp/file.gz
+    routes = {
+        "/london/": static_gz_dir(
+            "/london/", "static/london/", "application/x-protobuf", ".pbf"
+        ),
+        "/fonts/": static_dir("/fonts/", "static/fonts/", "application/x-protobuf", ".pbf"),
+    }
     """
