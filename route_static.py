@@ -50,6 +50,7 @@ def static(filename, content_type):
 
 def static_gz_dir(url, path, content_type, ext):
     "This is for a static directory of files of the same content type, where the content is alredy gzipped. No etag caching is done."
+
     def static_gz_dir_handler(http):
         print(path, http.request.path)
         assert http.request.path.endswith(ext)
@@ -66,6 +67,7 @@ def static_gz_dir(url, path, content_type, ext):
 
 def static_dir(url, path, content_type, ext):
     "This is for a static directory of files of the same content type. No etag caching is done."
+
     def static_dir_handler(http):
         print(path, http.request.path)
         assert http.request.path.endswith(ext)
@@ -77,7 +79,6 @@ def static_dir(url, path, content_type, ext):
         http.response.headers["content-length"] = len(http.response.body)
 
     return static_dir_handler
-
 
 
 if __name__ == "__main__":

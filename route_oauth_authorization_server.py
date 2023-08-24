@@ -7,6 +7,7 @@ import helper_pkce
 from config_common import url
 from config_oauth_authorization_server import oauth_authorization_server_jwks_json_path
 from helper_log import log
+from helper_meta_refresh import meta_refresh_html
 from helper_oauth_authorization_server import sign_jwt
 from http_session import get_session_id, login
 from render import render_main
@@ -125,9 +126,7 @@ def oauth_authorization_server_authorize(http):
         # At this point we need some sort of session so that we can handle login interactions and then update the claims with the sub (and anything else)
         session_id = login(http, "oauth")
         put_session_value(session_id, SessionValue(code=new_code))
-        http.response.body = Markup(
-            '<html><head><meta http-equiv="refresh" content="0; url={path}"></head><body><a href="{path}"></a></body></html>'
-        ).format(path="/oauth/login")
+        http.response.body = meta_refresh_html("/oauth/login")
 
 
 def oauth_authorization_server_login(http):

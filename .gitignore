@@ -1,6 +1,7 @@
 /.mypy_cache
 /.venv
 /__pycache__
+/chromedriver
 /store/oauth_authorization_server/clients/client_credentials.db
 /store/oauth_authorization_server/clients/code.db
 /store/oauth_authorization_server/code.db

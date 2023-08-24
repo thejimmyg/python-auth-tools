@@ -10,7 +10,7 @@ if __name__ == "__main__":
     import plugins
     from config_common import host, port
     from helper_plugins import setup_plugins
-    from http_gevent import server
+    from serve_gevent import server
 
     plugin_module_path = sys.argv[1]
     setup_plugins(plugin_module_path)

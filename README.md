@@ -99,6 +99,22 @@ sudo systemctl restart ntp
 rm -rf ./store ./test ./tmp && python3 test.py
 ```
 
+On macOS you'll need a new version of ChromeDriver. You can fetch it like this:
+
+```sh
+curl -O  https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/116.0.5845.96/mac-arm64/chromedriver-mac-arm64.zip
+unzip chromedriver-mac-arm64.zip
+mv chromedriver-mac-arm64/chromedriver .
+rm chromedriver-mac-arm64.zip
+rm -r chromedriver-mac-arm64
+```
+
+Then you can run the tests with the path to the local `chromedriver` like this:
+
+```sh
+rm -rf ./store ./test ./tmp && PATH="$PWD:$PATH" python3 test.py
+```
+
 ## Using this via a git submodule
 
 ```sh

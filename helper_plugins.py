@@ -18,6 +18,12 @@ def setup_plugins(plugin_module_path):
     plugins.init = getattr(plugin_module, "init", [])
     plugins.cleanup = getattr(plugin_module, "cleanup", [])
 
+    for extension_point_name in getattr(plugin_module, "extension_points", []):
+        print(f"Setting extension point implementation for '{extension_point_name}'")
+        setattr(
+            plugins, extension_point_name, getattr(plugin_module, extension_point_name)
+        )
+
     print("Initialising ...")
     for init in plugins.init:
         print(init)

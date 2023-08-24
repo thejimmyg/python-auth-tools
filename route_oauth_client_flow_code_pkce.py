@@ -11,6 +11,7 @@ import json
 import urllib.parse
 
 import helper_pkce
+import plugins
 from config_common import url
 from helper_http import RespondEarly
 from helper_log import log
@@ -69,9 +70,16 @@ def oauth_client_flow_code_pkce_callback(http):
         with urllib.request.urlopen(token_url) as fp:
             response = json.loads(fp.read())
             assert response["token_type"] == "bearer"
-            access_token = response["access_token"]
-            log(__file__, "Access token:", access_token)
-            http.response.body = render_oauth_client_success(jwt=access_token)
+
+            def on_success(http, response):
+                global log
+                access_token = response["access_token"]
+                log(__file__, "Access token:", access_token)
+                http.response.body = render_oauth_client_success(jwt=access_token)
+
+            getattr(plugins, "oauth_client_flow_code_pkce_on_success", on_success)(
+                http, response
+            )
     except urllib.error.HTTPError as e:
         log(__file__, "ERROR:", e.read().decode())
         http.response.body = "Could not get access token."
