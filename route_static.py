@@ -9,18 +9,21 @@ from config_common import gzipped_dir
 
 # XXX There is also a bug in that static_dir and static_dir_gz don't use etag caching, but should
 
-etags: dict[tuple[str, str], str] = {}
+etags: dict[tuple[str, str, str], str] = {}
 
 
 def static(filename, content_type):
     def static_filename(http):
         encoding = "none"
+        mtime = os.stat(filename).st_mtime
+        print(mtime)
         if "gzip" in http.request.headers.get("accept-encoding", ""):
             encoding = "gzip"
         if (
             "if-none-match" in http.request.headers
-            and (filename, encoding) in etags
-            and etags[(filename, encoding)] == http.request.headers["if-none-match"]
+            and (filename, encoding, mtime) in etags
+            and etags[(filename, encoding, mtime)]
+            == http.request.headers["if-none-match"]
         ):
             http.response.status = "304 Not Modified"
             return
@@ -28,7 +31,10 @@ def static(filename, content_type):
             http.response.headers["content-encoding"] = "gzip"
             tmp_filename = os.path.join(gzipped_dir, filename)
             os.makedirs(os.path.split(tmp_filename)[0], exist_ok=True)
-            if not os.path.exists(tmp_filename):
+            if (
+                not os.path.exists(tmp_filename)
+                or mtime > os.stat(tmp_filename).st_mtime
+            ):
                 with open(filename, "rb") as r:
                     with open(tmp_filename, "wb") as w:
                         data = gzip.compress(r.read())
@@ -40,10 +46,12 @@ def static(filename, content_type):
         else:
             with open(filename, "rb") as r:
                 http.response.body = r.read()
-        if (filename, encoding) not in etags:
-            etags[(filename, encoding)] = hashlib.md5(http.response.body).hexdigest()
+        if (filename, encoding, mtime) not in etags:
+            etags[(filename, encoding, mtime)] = hashlib.md5(
+                http.response.body
+            ).hexdigest()
         http.response.headers["content-type"] = content_type
-        http.response.headers["etag"] = etags[(filename, encoding)]
+        http.response.headers["etag"] = etags[(filename, encoding, mtime)]
 
     return static_filename
 
@@ -60,7 +68,7 @@ def static_gz_dir(url, path, content_type, ext):
         http.response.headers["content-encoding"] = "gzip"
         with open(filename, "rb") as fp:
             http.response.body = fp.read()
-        http.response.headers["content-length"] = len(http.response.body)
+        http.response.headers["content-length"] = str(len(http.response.body))
 
     return static_gz_dir_handler
 
@@ -76,7 +84,7 @@ def static_dir(url, path, content_type, ext):
         http.response.headers["content-type"] = content_type
         with open(filename, "rb") as fp:
             http.response.body = fp.read()
-        http.response.headers["content-length"] = len(http.response.body)
+        http.response.headers["content-length"] = str(len(http.response.body))
 
     return static_dir_handler
 

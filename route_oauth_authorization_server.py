@@ -24,7 +24,7 @@ from store_oauth_authorization_server_codes import (
     put_code_value,
     set_code_sub,
 )
-from store_oauth_authorization_server_keys import get_and_cache_current_kid_value
+from store_oauth_authorization_server_current_key import get_and_cache_current_kid_value
 from store_oauth_authorization_server_session import (
     SessionValue,
     get_session_value,

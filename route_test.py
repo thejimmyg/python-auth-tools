@@ -53,9 +53,9 @@ from store_oauth_authorization_server_codes import (
     oauth_authorization_server_codes_cleanup,
     oauth_authorization_server_codes_init,
 )
-from store_oauth_authorization_server_keys import (
-    oauth_authorization_server_keys_cleanup,
-    oauth_authorization_server_keys_init,
+from store_oauth_authorization_server_current_key import (
+    oauth_authorization_server_current_key_cleanup,
+    oauth_authorization_server_current_key_init,
 )
 from store_oauth_authorization_server_session import (
     oauth_authorization_server_session_cleanup,
@@ -65,22 +65,25 @@ from store_oauth_client_flow_code_pkce_code_verifier import (
     oauth_client_flow_code_pkce_code_verifier_cleanup,
     oauth_client_flow_code_pkce_code_verifier_init,
 )
-from store_webhook_server_keys import webhook_keys_cleanup, webhook_keys_init
+from store_webhook_server_current_key import (
+    webhook_current_key_cleanup,
+    webhook_current_key_init,
+)
 
 init = [
     oauth_authorization_server_codes_init,
-    oauth_authorization_server_keys_init,
+    oauth_authorization_server_current_key_init,
     oauth_authorization_server_session_init,
-    webhook_keys_init,
+    webhook_current_key_init,
     oauth_client_flow_code_pkce_code_verifier_init,
     oauth_authorization_server_clients_client_credentials_init,
     oauth_authorization_server_clients_code_init,
 ]
 cleanup = [
     oauth_authorization_server_codes_cleanup,
-    oauth_authorization_server_keys_cleanup,
+    oauth_authorization_server_current_key_cleanup,
     oauth_authorization_server_session_cleanup,
-    webhook_keys_cleanup,
+    webhook_current_key_cleanup,
     oauth_client_flow_code_pkce_code_verifier_cleanup,
     oauth_authorization_server_clients_client_credentials_cleanup,
     oauth_authorization_server_clients_code_cleanup,

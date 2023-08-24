@@ -16,18 +16,22 @@ See [https://www.oauth.com/oauth2-servers/definitions/](https://www.oauth.com/oa
 
 You need to be running an NTP daemon (and may need to restart it if you see drift) otherwise the SAML flow might fail because the token is issued by the remote server before your computer's current time.
 
+## Code Structure
+
+I'd like this code to run in multiple very different environments like Raspberry Pi or AWS Lambda. So there are a few things that are a bit different:
+
+* There is no package. All the individual `.py` files should be on `PYTHONPATH` and can therefore just be imported, no need for `setup.py`, `pyproject.toml` or `pip` in order to use them
+* There are no directories for `.py` files. By keeping everything top level, everything can import everything else easily without the code needing to be installed as a package.
+* There aren't really any classes, they aren't needed. Instead each module is designed to be used once (singleton pattern) and so can store its state in module-level global variables. This means everything can be normal Python functions. The code does uses classes for data validation though.
+* `.py` files are named according to the convention `componenttype_componentname_subcomponentname.py`. This means that all files of the same type (config, routes, stores, helpers, etc) are all close together which in turn means it is easy to copy patterns for each component type between components.
+* Everything ends up with long names. But the upside of this is that is incredibly clear what each thing is, and refactoring is more straightforward because there are fewer name collisions
+* The code isn't threadsafe, instead it uses gevent for cooperative multitasking making it very efficient.
+* To run any of the code, you compose the different `.py` files together into your own Python module. That module name is then passed to one of the `cli_*.py` files on the command line when you run it. Behind the scenes, each of the modules that provides extension points can access any implementations you define by importing them from the `plugin` module. The only example of this is the `route_test.py` file which is used to run a server that combines an OAuth 2 Authorization Server, Clients, Resource Owners as well as Login, consen (albeit automatically granted) and SAML2 flows as part of the test suite.
+
 ## Thread Safety
 
 This code is not designed to be run in a multi-threaded environment. It should either be served in a single process using `gevent`, or something like a lambda function. That is not to say it doesn't use threads itself, it does, although under `gevent` these get run as eventlets anyway after the monkey patch.
 
-## Config
-
-Optional:
-
-```sh
-TMP_DIR='./tmp'
-STORE_DIR='./store'
-```
 
 ## Install
 
@@ -40,6 +44,24 @@ pip install -r requirements-dev.txt
 ```
 
 The SAML functionality needs `xmlsec1`. You can get it on macOS with `brew install libxmlsec1`. On Debian bookworm, just install `python3-pysaml2` and it is a dependency.
+
+## Config
+
+Optional:
+
+```sh
+TMP_DIR='./tmp'
+STORE_DIR='./store'
+```
+
+## Plugins
+
+* init
+* cleanup
+* routes
+* extension_points
+
+XXX More documentation needed here.
 
 ## Run
 
@@ -167,4 +189,213 @@ re-licensing in future.
 
 ```sh
 isort . &&  autoflake -r --in-place --remove-unused-variables --remove-all-unused-imports . && black .
+```
+
+## Conceptual ERD
+
+
+At the moment there is no physical store or management for the oauth_authorization_server_user, you simply enter their sub as part of the code + PKCE flow.
+
+The database structure looks like this:
+
+```mermaid
+erDiagram
+
+    oauth_authorization_server_session {
+        string session_id
+        string code
+    }
+
+    oauth_authorization_server_current_key {
+        string kid
+    }
+
+
+    oauth_authorization_server_client_credentials_client {
+        string client_id
+        string client_secret
+        list[string] scopes
+    }
+
+    oauth_authorization_server_code_client {
+        string client_id
+        string redirect_uri
+        list[string] scopes
+    }
+
+    oauth_authorization_server_code {
+        string client_id
+        string code_challenge
+        list[string] scopes
+        string state
+        string sub
+    }
+
+    oauth_authorization_server ||--|{ oauth_authorization_server_client_credentials_client : "has many"
+    oauth_authorization_server ||--|{ oauth_authorization_server_code_client : "has many"
+    oauth_authorization_server_code_client ||--|{ oauth_authorization_server_code : has
+    oauth_authorization_server ||--|{ oauth_authorization_server_user : "has many"
+    oauth_authorization_server_user ||--|{ oauth_authorization_server_session : "has many"
+    oauth_authorization_server ||--|{ oauth_authorization_server_session : "has many"
+    oauth_authorization_server ||--|| oauth_authorization_server_current_key : "exactly one"
+```
+
+XXX Do we need oauth_authorization_server_code string state?
+
+In addition the OAuth Authorizatioin Server uses the filesystem to store private keys and a `jwks.json` file:
+
+```mermaid
+erDiagram
+    oauth_authorization_server_private_key {
+        string kid
+        string private_private_key
+    }
+    oauth_authorization_server ||--|{ oauth_authorization_server_private_key : "has many"
+    oauth_authorization_server_jwks ||--|{ oauth_authorization_server_private_key : "has many"
+```
+
+
+When a Code + PKCE client redirects to the OAuth Authorizatioin Server authoire
+endpoint, a code value is generated and stored, with the code itself being
+added to the session. After the login, this means that the code value can be
+retrieved from the session and sent to the client, where it can then call the
+OAuth Authorizatioin Server token endpoint with the code to get the access
+tokens.
+
+XXX Why can't the session implementation be generic? At the moment it is specifically to cache the code that is requested (code verifier?)
+
+
+The storage for a Code + PKCE client looks like this:
+
+```mermaid
+erDiagram
+    oauth_client_flow_code {
+        string client_id
+    }
+    oauth_client_flow_code_pkce_code_verifier {
+        string state
+        string code_verifier
+    }
+    oauth_client_flow_code ||--|{ oauth_client_flow_code_pkce_code_verifier : "has many"
+```
+
+And for a client credentials client there isn't really any storage needed beacuase the client_id, secret, and requested scopes are all passed at the time of the flow:
+
+```mermaid
+erDiagram
+    oauth_client_flow_client_credentials {
+    }
+```
+
+The webhook provider structure is similar to the keys part of the OAuth Authorization Server:
+
+XXX Should webhook be named webhook_provider everywhere to make it clearer?
+
+```mermaid
+erDiagram
+    webhook ||--|{ webhook_key : "has many"
+    webhook ||--|| webhook_current_key : "exactly one"
+    webhook_jwks ||--|{ webhook_key : "has many"
+```
+
+## OAuth Code + PKCE Flow
+
+This misses out scope checks too.
+
+```mermaid
+sequenceDiagram
+    User's Browser->>OAuth Client Server: /oauth-client/login?scope=<scopes>
+    OAuth Client Server->>OAuth Client Server: Generate a code verifier and state, derive a code challenge from the code verifier
+    OAuth Client Server->>Code Verifier Store: Save state: code_verifier
+    OAuth Client Server->>User's Browser: HTTP redirect response with Location set to authorize URL redirect
+    User's Browser->>OAuth Authorization Server: /oauth/authorize?response_type=code&state=<state>&client_id=<client_id>&code_challenge=<code_challenge>&code_challenge_method=S256
+    OAuth Authorization Server-->>OAuth Authorization Server: Login flow and consent (see other diagram)
+    OAuth Authorization Server->>OAuth Authorization Server: Generate code value
+    OAuth Authorization Server->>Code Value Store: Save code: client_id, code_challenge, scopes, state, sub
+    OAuth Authorization Server->>User's Browser: HTTP redirect response with Location set to client redirect uri
+    User's Browser->>OAuth Client Server: /oauth-client/callback?state=<state>&code=<code>
+    OAuth Client Server->>Code Verifier Store: get and delete code_verifier using state <state>
+    Code Verifier Store->>OAuth Client Server: <code_verifier>
+    OAuth Client Server->>OAuth Authorization Server: Ask for token on the server /oauth/token?code_verifier=<code_verifier>&code=<code>&grant_type=code
+    OAuth Authorization Server->>Code Value Store: Get client ID, code challenge, scopes and sub using the code <code>
+    Code Value Store->>OAuth Authorization Server: <client ID>, <code_challenge>, <scopes>, <sub>
+    OAuth Authorization Server->>OAuth Authorization Server: Verify the code challenge using the code verifier
+    OAuth Authorization Server-->>OAuth Authorization Server: Sign key flow (see other diagram)
+    OAuth Authorization Server->>OAuth Client Server: {access_token: <access_token>, expires: <expires>}
+    OAuth Client Server-->>OAuth Client Server: Session flow (see other diagram)
+    OAuth Client Server->>User's Browser: Success
+```
+
+Is it OK to use the state as the key for the code verifier in the client server? I think it is.
+
+## OAuth Client Credentials Flow
+
+This misses out scope checks too.
+
+```mermaid
+sequenceDiagram
+    Machine->>OAuth Client Credentials Library: <client_id>, <secret>, <scopes>
+    OAuth Client Credentials Library->>OAuth Authorization Server: Get /.well-known/openid-configuration
+    OAuth Authorization Server->>OAuth Client Credentials Library: {token_endpoint: <token_endpoint>, ...}
+    OAuth Client Credentials Library->>OAuth Authorization Server: <token_endpoint>?grant_type=client_credentials&scope=<scope>, Authorization: Basic base64encode(<client_id>+':'+<secret>)
+    OAuth Authorization Server->>OAuth Client Credentials Library: {access_token: <access_token>, expires: <expires>}
+    OAuth Client Credentials Library->>Machine: Success
+```
+
+## Resource Owner Flow
+
+
+```mermaid
+sequenceDiagram
+    User/Machine->>OAuth Resource Owner: Make an API call with the <access_token>
+    OAuth Resource Owner->>OAuth Resource Owner: extract <iss> key and verify it is an issuer we trust (XXX We don't verify yet?)
+    OAuth Resource Owner->>OAuth Authorization Server: Get and cache <iss>/.well-known/openid-configuration
+    OAuth Authorization Server->>OAuth Resource Owner: {jwks_uri: <jwks_uri>, ...}
+    OAuth Resource Owner->>OAuth Authorization Server: Get and cache JWKS from <jwks_uri>
+    OAuth Authorization Server->>OAuth Resource Owner: {keys: [{kid: <kid1>, ...}]}
+    OAuth Resource Owner->>OAuth Resource Owner: Extract <kid> from <access_token>
+    OAuth Resource Owner->>OAuth Resource Owner: Find the corresponding public keys in the JWKS response
+    OAuth Resource Owner->>OAuth Resource Owner: Verify <access_token> signature using public key
+    OAuth Resource Owner->>OAuth Resource Owner: Handle the API call
+    OAuth Resource Owner->>User/Machine: API Response
+```
+
+
+## Webhook Flow
+
+Send an event to a webhook consumer:
+
+```mermaid
+sequenceDiagram
+    Resource Owner->>Webhook Provider: Trigger webhooks with an event <payload> {iss: ..., event: ...}
+    Webhook Provider->>Webhook Current Key Store: Get and cache current key
+    Webhook Current Key Store->>Webhook Provider: <kid>
+    Webhook Provider->>Webhook Private Key Directory: Read private key <kid>
+    Webhook Private Key Directory->>Webhook Provider: <private_key>
+    Webhook Provider->>Webhook Provider: Sign <payload> using <private_key>
+    Webhook Provider->>Webhook Provider: Detatch middle part of JWT leaving <detatched_token> of form ey..sig
+    Webhook Provider->>Webhook Consumer: POST <payload> as the HTTP body with an HTTP header Authorization: <detatched_token>
+```
+
+The webhook consumer verifies the `<body>` it gets `POST`ed like this:
+
+```mermaid
+sequenceDiagram
+    Webhook Consumer->>Webhook Consumer: read <iss> from payload body and verify it is the issuer we expect (XXX We don't verify yet?)
+    Webhook Consumer->>Webhook Consumer: base64 encode the whole body to <body_base64_encoded>
+    Webhook Consumer->>Webhook Consumer: read the authorisation header and re-assemble a <jwt> by putting <body_base64> in between the .. characters of the detatched token
+    Webhook Consumer->>Webhook Provider: Get and cache keys from <iss>/.well-known/webhook-jwks.json # XXX This URL is non-standard, but I think it is a sensible location
+    Webhook Provider->>Webhook Consumer: {keys: [{kid: <kid1>, ...}]}
+    Webhook Consumer->>Webhook Consumer: Extract <kid> from the generated <jwt>
+    Webhook Consumer->>Webhook Consumer: Find the corresponding public keys in the JWKS response
+    Webhook Consumer->>Webhook Consumer: Verify <jwt> signature using public key
+    Webhook Consumer->>Webhook Consumer: Act on the other keys in the JSON body, now that you trust the authorization
+```
+
+This flow is robust in the face of key rotation, and doesn't require a shared secret of any type.
+
+## SAML SP Flow
+
+```mermaid
+sequenceDiagram
 ```

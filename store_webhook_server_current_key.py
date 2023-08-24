@@ -4,19 +4,17 @@ from threading import Lock
 
 from cachetools import TTLCache, cached
 
-from config_oauth_authorization_server import (
-    oauth_authorization_server_store_keys_dbpath,
-)
+from config_webhook import webhook_store_keys_dbpath
 
 _db = None
 
 
-def oauth_authorization_server_keys_init():
+def webhook_current_key_init():
     global _db
-    _db = dbm.open(oauth_authorization_server_store_keys_dbpath, "c")
+    _db = dbm.open(webhook_store_keys_dbpath, "c")
 
 
-def oauth_authorization_server_keys_cleanup():
+def webhook_current_key_cleanup():
     _db.close()
 
 
