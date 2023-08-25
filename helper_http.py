@@ -1,4 +1,5 @@
 import traceback
+import uuid
 
 from pydantic import BaseModel
 
@@ -22,6 +23,7 @@ class Response(BaseModel):
 class Http(BaseModel):
     request: Request
     response: Response
+    context: dict
 
 
 class RespondEarly(Exception):
@@ -38,7 +40,7 @@ def helper_http_handle(routes, method, path, query, request_headers, request_bod
         body=request_body,
     )
     response = Response(status="200 OK", headers={}, body=None)
-    http = Http(request=request, response=response)
+    http = Http(request=request, response=response, context=dict(uid=uuid.uuid4()))
     request_path = http.request.path
     if request_path == "/":
         request_path = ""
