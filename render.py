@@ -1,6 +1,6 @@
 from markupsafe import Markup
 
-import plugins
+import helper_hooks
 
 main_markup = Markup(
     """<!DOCTYPE html>
@@ -25,4 +25,6 @@ main_markup = Markup(
 
 
 def render_main(title: str, body: Markup = Markup("")):
-    return plugins.main_markup.format(title=title, body=body)
+    return helper_hooks.hooks.get("main_markup", main_markup).format(
+        title=title, body=body
+    )

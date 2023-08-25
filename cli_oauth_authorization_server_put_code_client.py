@@ -1,14 +1,14 @@
 if __name__ == "__main__":
     import sys
 
-    from helper_plugins import setup_plugins
+    from helper_hooks import setup_hooks
     from store_oauth_authorization_server_clients_code import (
         CodeClient,
         put_code_client,
     )
 
-    plugin_module_path = sys.argv[1]
-    setup_plugins(plugin_module_path)
+    hook_module_path = sys.argv[1]
+    setup_hooks(hook_module_path)
 
     put_code_client(
         sys.argv[2],

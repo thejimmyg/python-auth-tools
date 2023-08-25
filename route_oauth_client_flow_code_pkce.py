@@ -11,7 +11,7 @@ import json
 import urllib.parse
 
 import helper_pkce
-import plugins
+import helper_hooks
 from config_common import url
 from helper_http import RespondEarly
 from helper_log import log
@@ -77,9 +77,9 @@ def oauth_client_flow_code_pkce_callback(http):
                 log(__file__, "Access token:", access_token)
                 http.response.body = render_oauth_client_success(jwt=access_token)
 
-            getattr(plugins, "oauth_client_flow_code_pkce_on_success", on_success)(
-                http, response
-            )
+            helper_hooks.hooks.get(
+                "oauth_client_flow_code_pkce_on_success", on_success
+            )(http, response)
     except urllib.error.HTTPError as e:
         log(__file__, "ERROR:", e.read().decode())
         http.response.body = "Could not get access token."

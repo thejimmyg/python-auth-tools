@@ -284,7 +284,7 @@ def put_client_code_proc(env, url):
         [
             "python3",
             "cli_oauth_authorization_server_put_code_client.py",
-            "route_test",
+            "hooks_test",
             "client",
             url + "/oauth-client/callback",
             "read",
@@ -299,7 +299,7 @@ def put_client_client_credentials_proc(env):
         [
             "python3",
             "cli_oauth_authorization_server_put_client_credentials_client.py",
-            "route_test",
+            "hooks_test",
             "client",
             "secret",
             "read",
@@ -314,7 +314,7 @@ def generate_keys_proc(env, kid):
         [
             "python3",
             "cli_oauth_authorization_server_generate_keys.py",
-            "route_test",
+            "hooks_test",
             kid,
         ],
         env=env,
@@ -327,7 +327,7 @@ def set_current_key_proc(env, kid):
         [
             "python3",
             "cli_oauth_authorization_server_set_current_key.py",
-            "route_test",
+            "hooks_test",
             kid,
         ],
         env=env,
@@ -337,14 +337,14 @@ def set_current_key_proc(env, kid):
 
 def webhook_generate_keys_proc(env, kid):
     private_key_process = subprocess.Popen(
-        ["python3", "cli_webhook_generate_keys.py", "route_test", kid], env=env
+        ["python3", "cli_webhook_generate_keys.py", "hooks_test", kid], env=env
     )
     assert private_key_process.wait() == 0
 
 
 def webhook_set_current_key_proc(env, kid):
     set_current_key_process = subprocess.Popen(
-        ["python3", "cli_webhook_set_current_key.py", "route_test", kid], env=env
+        ["python3", "cli_webhook_set_current_key.py", "hooks_test", kid], env=env
     )
     assert set_current_key_process.wait() == 0
 
@@ -438,9 +438,9 @@ def verify_jwt_proc(env, token):
 
 
 if __name__ == "__main__":
-    from helper_plugins import setup_plugins
+    from helper_hooks import setup_hooks
 
-    setup_plugins("route_test")
+    setup_hooks("hooks_test")
 
     # Unit tests
     test_render()
@@ -492,7 +492,7 @@ if __name__ == "__main__":
         log = open(log_path, "wb")
         p = subprocess.Popen(
             # Have to run Python in unbuffered mode (-u) to get the logs streaming to the log files
-            ["python3", "-u", "cli_serve_gevent.py", "route_test"],
+            ["python3", "-u", "cli_serve_gevent.py", "hooks_test"],
             env=env,
             stdout=log,
             stderr=log,

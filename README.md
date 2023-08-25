@@ -20,17 +20,23 @@ You need to be running an NTP daemon (and may need to restart it if you see drif
 
 I'd like this code to run in multiple very different environments like Raspberry Pi or AWS Lambda. So there are a few things that are a bit different:
 
-* There is no package. All the individual `.py` files should be on `PYTHONPATH` and can therefore just be imported, no need for `setup.py`, `pyproject.toml` or `pip` in order to use them
-* There are no directories for `.py` files. By keeping everything top level, everything can import everything else easily without the code needing to be installed as a package.
-* There aren't really any classes, they aren't needed. Instead each module is designed to be used once (singleton pattern) and so can store its state in module-level global variables. This means everything can be normal Python functions. The code does uses classes for data validation though.
 * `.py` files are named according to the convention `componenttype_componentname_subcomponentname.py`. This means that all files of the same type (config, routes, stores, helpers, etc) are all close together which in turn means it is easy to copy patterns for each component type between components.
 * Everything ends up with long names. But the upside of this is that is incredibly clear what each thing is, and refactoring is more straightforward because there are fewer name collisions
-* The code isn't threadsafe, instead it uses gevent for cooperative multitasking making it very efficient.
-* To run any of the code, you compose the different `.py` files together into your own Python module. That module name is then passed to one of the `cli_*.py` files on the command line when you run it. Behind the scenes, each of the modules that provides extension points can access any implementations you define by importing them from the `plugin` module. The only example of this is the `route_test.py` file which is used to run a server that combines an OAuth 2 Authorization Server, Clients, Resource Owners as well as Login, consen (albeit automatically granted) and SAML2 flows as part of the test suite.
+* There is no package. All the individual `.py` files should be on `PYTHONPATH` and can therefore just be imported, no need for `setup.py`, `pyproject.toml` or `pip` in order to use them
+* There are no directories for `.py` files. By keeping everything top level, everything can import everything else easily without the code needing to be installed as a package.
+* There aren't really any classes, they aren't needed. Instead each module is designed to be used once (singleton pattern) and so can store its state in module-level global variables. This means everything can be normal Python functions. The code does uses classes for data validation though. If you need to use the same component twice, make a copy of the files with a different name. The implementations will probably diverge over time anyway, so in the long term you'll reduce bugs.
+* There is a hooks system so that you can customise the behaviour of the existing code without needing classes/inheritance etc.
+* The code isn't threadsafe, instead it uses gevent for cooperative multitasking making it very efficient in a single process. You an safely run multiple processes at once on the same computer and round-robin proxy to each if you want to make the most of the available CPUs.
 
-## Thread Safety
+## Understanding Hooks
 
-This code is not designed to be run in a multi-threaded environment. It should either be served in a single process using `gevent`, or something like a lambda function. That is not to say it doesn't use threads itself, it does, although under `gevent` these get run as eventlets anyway after the monkey patch.
+To run any of the code, you compose the different `.py` files together into your own `hooks_` Python module that imports the `helper_hooks` module and sets its `hooks` variable with all the hooks you want to register.
+
+That `hooks_` module name is then passed to one of the `cli_*.py` files on the command line when you run it.
+
+Behind the scenes, each of the modules that can use your hooks will do so by looking them up in `helper_hooks.hooks`.
+
+The only example of this is the `hooks_test.py` file which is used to run a server that combines an OAuth 2 Authorization Server, Clients, Resource Owners as well as Login, consen (albeit automatically granted) and SAML2 flows as part of the test suite.
 
 
 ## Install
@@ -72,14 +78,14 @@ source .venv/bin/activate
 ```
 
 ```sh
-python3 cli_oauth_authorization_server_put_client_credentials_client.py route_test client secret read
-python3 cli_oauth_authorization_server_put_code_client.py route_test client http://localhost:16001/oauth-client/callback read
-python3 cli_oauth_authorization_server_generate_keys.py route_test test
-python3 cli_oauth_authorization_server_set_current_key.py route_test test
+python3 cli_oauth_authorization_server_put_client_credentials_client.py hooks_test client secret read
+python3 cli_oauth_authorization_server_put_code_client.py hooks_test client http://localhost:16001/oauth-client/callback read
+python3 cli_oauth_authorization_server_generate_keys.py hooks_test test
+python3 cli_oauth_authorization_server_set_current_key.py hooks_test test
 ```
 
 ```sh
-python3 cli_serve_gevent.py route_test
+python3 cli_serve_gevent.py hooks_test
 ```
 
 In the second terminal:
@@ -95,8 +101,8 @@ curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```
 
 ```sh
-python3 cli_webhook_generate_keys.py route_test test
-python3 cli_webhook_set_current_key.py route_test test
+python3 cli_webhook_generate_keys.py hooks_test test
+python3 cli_webhook_set_current_key.py hooks_test test
 export PAYLOAD='{"hello": "world"}'
 export SIG=`python3 cli_webhook_sign_jwt.py "$PAYLOAD" test` && echo $SIG
 python3 cli_webhook_consumer_verify_jwt.py "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-jwks.json"
