@@ -10,34 +10,35 @@ Steps:
 import json
 import urllib.parse
 
-import helper_pkce
+from markupsafe import Markup
+
 import helper_hooks
-from config_common import url
-from helper_http import RespondEarly
-from helper_log import log
-from render_oauth_client import render_oauth_client_success
-from store_oauth_client_flow_code_pkce_code_verifier import (
-    CodeVerifierValue,
-    get_and_delete_code_verifier_value,
-    put_code_verifier_value,
+from config import config_url
+from helper_log import helper_log
+from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
+from render import render
+from store_oauth_code_pkce_code_verifier import (
+    CodeVerifier,
+    store_oauth_code_pkce_code_verifier_get_and_delete,
+    store_oauth_code_pkce_code_verifier_put,
 )
 
 # XXX Expiring old code verifiers
 
 
-def session_from_cookie(http):
-    http.response.status = "401 Not logged in"
-    http.response.body = "Not logged in"
-    raise RespondEarly()
+# def session_from_cookie(http):
+#     http.response.status = "401 Not logged in"
+#     http.response.body = "Not logged in"
+#     raise RespondEarly()
+#
+#
+# def start_session(http):
+#     jwt = jwt_from_cookie(http, None)
+#     http.response.status = "200 OK"
+#     http.response.body = "OK" + jwt
 
 
-def start_session(http):
-    jwt = jwt_from_cookie(http, None)
-    http.response.status = "200 OK"
-    http.response.body = "OK" + jwt
-
-
-def oauth_client_flow_code_pkce_callback(http):
+def route_oauth_code_pkce_callback(http):
     q = urllib.parse.parse_qs(
         http.request.query,
         keep_blank_values=False,
@@ -50,10 +51,12 @@ def oauth_client_flow_code_pkce_callback(http):
     assert len(q["code"]) == 1
     if "state" in q:
         assert len(q["state"]) == 1
-    code_verifier = get_and_delete_code_verifier_value(q["state"][0]).code_verifier
+    code_verifier = store_oauth_code_pkce_code_verifier_get_and_delete(
+        q["state"][0]
+    ).code_verifier
     code = q["code"][0]
     token_url = (
-        url
+        config_url
         + "/oauth/token?code_verifier="
         + urllib.parse.quote(code_verifier)
         + "&code="
@@ -66,7 +69,7 @@ def oauth_client_flow_code_pkce_callback(http):
 
     # XXX Make this spec-compliant
     try:
-        log(__file__, "URL:", token_url)
+        helper_log(__file__, "URL:", token_url)
         with urllib.request.urlopen(token_url) as fp:
             response = json.loads(fp.read())
             assert response["token_type"] == "bearer"
@@ -74,19 +77,24 @@ def oauth_client_flow_code_pkce_callback(http):
             def on_success(http, response):
                 global log
                 access_token = response["access_token"]
-                log(__file__, "Access token:", access_token)
-                http.response.body = render_oauth_client_success(jwt=access_token)
+                helper_log(__file__, "Access token:", access_token)
+                http.response.body = render(
+                    title="Success!",
+                    body=Markup(
+                        """<p>Successfully logged in. Here's the access token: <span id="jwt">{access_token}</span></p>"""
+                    ).format(access_token=access_token),
+                )
 
-            helper_hooks.hooks.get(
-                "oauth_client_flow_code_pkce_on_success", on_success
-            )(http, response)
+            helper_hooks.hooks.get("oauth_code_pkce_on_success", on_success)(
+                http, response
+            )
     except urllib.error.HTTPError as e:
-        log(__file__, "ERROR:", e.read().decode())
+        helper_log(__file__, "ERROR:", e.read().decode())
         http.response.body = "Could not get access token."
 
 
 # XXX Good to send state here too so we can use it to retireve the code_verfier
-def oauth_client_flow_code_pkce_login(http):
+def route_oauth_code_pkce_login(http):
     q = urllib.parse.parse_qs(
         http.request.query,
         keep_blank_values=False,
@@ -100,10 +108,12 @@ def oauth_client_flow_code_pkce_login(http):
         assert len(q["scope"]) == 1
         scope = q["scope"][0]
 
-    code_verifier = helper_pkce.code_verifier()
-    state = helper_pkce.code_verifier()
-    put_code_verifier_value(state, CodeVerifierValue(code_verifier=code_verifier))
-    code_challenge = helper_pkce.code_challenge(code_verifier)
+    code_verifier = helper_pkce_code_verifier()
+    state = helper_pkce_code_verifier()
+    store_oauth_code_pkce_code_verifier_put(
+        state, CodeVerifier(code_verifier=code_verifier)
+    )
+    code_challenge = helper_pkce_code_challenge(code_verifier)
     # pair = code_verifier, code_challenge
     http.response.status = "302 Redirect"
     # See https://datatracker.ietf.org/doc/html/rfc7636#section-1.1
@@ -111,7 +121,7 @@ def oauth_client_flow_code_pkce_login(http):
     # Don't need state if using PKCE?
     client = "client"
     authorize_url = (
-        url
+        config_url
         + "/oauth/authorize?response_type=code&state="
         + urllib.parse.quote(state)
         + "&client_id="

@@ -1,14 +1,14 @@
 import json
 
-from config_common import url
+from config import config_url
 from render_oauth_resource_owner import render_oauth_resource_owner_home
 
 
-def oauth_resource_owner_home(http):
+def route_oauth_resource_owner_home(http):
     http.response.body = render_oauth_resource_owner_home(title="Resource Owner Home")
 
 
-def oauth_resource_owner_openapi(http):
+def route_oauth_resource_owner_openapi(http):
     http.response.body = {
         "openapi": "3.0.1",
         "info": {
@@ -209,7 +209,7 @@ def oauth_resource_owner_openapi(http):
                                         "aud": "aud",
                                         "exp": 1690538896,
                                         "iat": 1690538296,
-                                        "iss": url,
+                                        "iss": config_url,
                                         "sub": "client",
                                     }
                                 )

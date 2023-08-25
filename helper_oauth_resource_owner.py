@@ -3,10 +3,10 @@ import json
 
 from jwcrypto import jwk, jws, jwt
 
-from helper_log import log
+from helper_log import helper_log
 from helper_oidc import (
-    fetch_and_cache_jwks_for_kid,
-    fetch_and_cache_openid_configuration,
+    helper_oidc_fetch_and_cache_jwks_for_kid,
+    helper_oidc_fetch_and_cache_openid_configuration,
 )
 
 #
@@ -20,22 +20,22 @@ from helper_oidc import (
 # XXX Verify the issuer
 
 
-def verify_jwt(signed_jwt):
+def helper_oauth_resource_owner_verify_jwt(signed_jwt):
     if not signed_jwt or not signed_jwt.startswith("e"):
         raise Exception("Not a valid JWT")
-    log(__file__, "Signed JWT:", signed_jwt)
+    helper_log(__file__, "Signed JWT:", signed_jwt)
     issuer = json.loads(
         base64.b64decode(signed_jwt.split(".")[1] + "==").decode("utf8")
     )["iss"]
-    log(__file__, "Issuer:", issuer)
-    openid_configuration = fetch_and_cache_openid_configuration(issuer)
-    log(__file__, "OpenID Configuration:", openid_configuration)
+    helper_log(__file__, "Issuer:", issuer)
+    openid_configuration = helper_oidc_fetch_and_cache_openid_configuration(issuer)
+    helper_log(__file__, "OpenID Configuration:", openid_configuration)
     jwks_url = openid_configuration["jwks_uri"]
     jwstoken = jws.JWS()
     jwstoken.deserialize(signed_jwt)
-    log(__file__, "JOSE Header:", jwstoken.jose_header)
+    helper_log(__file__, "JOSE Header:", jwstoken.jose_header)
     kid = jwstoken.jose_header["kid"]
-    jwks = fetch_and_cache_jwks_for_kid(jwks_url, kid)
+    jwks = helper_oidc_fetch_and_cache_jwks_for_kid(jwks_url, kid)
     public_key = None
     for key in jwks["keys"]:
         if key["kid"] == kid:

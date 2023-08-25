@@ -2,8 +2,8 @@ import base64
 
 from jwcrypto import jwk, jws, jwt
 
-from helper_log import log
-from helper_oidc import fetch_and_cache_jwks_for_kid
+from helper_log import helper_log
+from helper_oidc import helper_oidc_fetch_and_cache_jwks_for_kid
 
 #
 # Verify
@@ -13,7 +13,7 @@ from helper_oidc import fetch_and_cache_jwks_for_kid
 # XXX Implement rate limiting on fetch and a cache
 
 
-def verify_jwt(sig, body, jwks_url):
+def helper_webhook_consumer_verify_jwt(sig, body, jwks_url):
     if not sig or not sig.startswith("e"):
         raise Exception("Not a valid JWT")
     signed_jwt_parts = sig.split(".")
@@ -25,12 +25,12 @@ def verify_jwt(sig, body, jwks_url):
         + "."
         + signed_jwt_parts[2]
     )
-    log(__file__, "Signed JWT:", signed_jwt)
+    helper_log(__file__, "Signed JWT:", signed_jwt)
     jwstoken = jws.JWS()
     jwstoken.deserialize(signed_jwt)
-    log(__file__, "JOSE Header:", jwstoken.jose_header)
+    helper_log(__file__, "JOSE Header:", jwstoken.jose_header)
     kid = jwstoken.jose_header["kid"]
-    jwks = fetch_and_cache_jwks_for_kid(jwks_url, kid)
+    jwks = helper_oidc_fetch_and_cache_jwks_for_kid(jwks_url, kid)
     public_key = None
     for key in jwks["keys"]:
         if key["kid"] == kid:

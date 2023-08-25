@@ -4,7 +4,7 @@ import json
 from pydantic import BaseModel
 
 from config_oauth_authorization_server import (
-    oauth_authorization_server_store_session_dbpath,
+    config_oauth_authorization_server_sessions_db_path,
 )
 
 
@@ -15,18 +15,20 @@ class SessionValue(BaseModel):
 _db = None
 
 
-def oauth_authorization_server_session_init():
+def store_oauth_authorization_server_session_init():
     global _db
-    _db = dbm.open(oauth_authorization_server_store_session_dbpath, "c")
+    _db = dbm.open(config_oauth_authorization_server_sessions_db_path, "c")
 
 
-def oauth_authorization_server_session_cleanup():
+def store_oauth_authorization_server_session_cleanup():
     _db.close()
 
 
-def put_session_value(session: str, session_value: SessionValue):
+def store_oauth_authorization_server_session_put(
+    session: str, session_value: SessionValue
+):
     _db[session.encode("utf8")] = json.dumps(dict(session_value)).encode("utf8")
 
 
-def get_session_value(session: str):
+def store_oauth_authorization_server_session_get(session: str):
     return SessionValue(**json.loads(_db[session.encode("utf8")].decode("utf8")))

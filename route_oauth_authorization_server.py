@@ -3,32 +3,38 @@ import urllib.parse
 
 from markupsafe import Markup
 
-import helper_pkce
-from config_common import url
-from config_oauth_authorization_server import oauth_authorization_server_jwks_json_path
-from helper_log import log
-from helper_meta_refresh import meta_refresh_html
-from helper_oauth_authorization_server import sign_jwt
-from http_session import get_session_id, login
-from render import render_main
-from route_oauth_resource_owner_api import apis
-from route_static import static
-from store_oauth_authorization_server_clients_client_credentials import (
-    get_client_credentials_client,
+from config import config_url
+from config_oauth_authorization_server import (
+    config_oauth_authorization_server_jwks_json_path,
 )
-from store_oauth_authorization_server_clients_code import get_code_client
+from helper_log import helper_log
+from helper_meta_refresh import helper_meta_refresh_html
+from helper_oauth_authorization_server import helper_oauth_authorization_server_sign_jwt
+from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
+from http_session import http_session_create, http_session_get_id
+from render import render
+from route_oauth_resource_owner_api import apis
+from route_static import route_static
+from store_oauth_authorization_server_client_credentials import (
+    store_oauth_authorization_server_client_credentials_get,
+)
+from store_oauth_authorization_server_code_pkce import (
+    store_oauth_authorization_server_code_pkce_get,
+)
 from store_oauth_authorization_server_codes import (
     CodeValue,
-    get_and_delete_code_value,
     get_code_value,
-    put_code_value,
-    set_code_sub,
+    store_oauth_authorization_server_codes_get_and_delete,
+    store_oauth_authorization_server_codes_put,
+    store_oauth_authorization_server_codes_set_sub,
 )
-from store_oauth_authorization_server_current_key import get_and_cache_current_kid_value
+from store_oauth_authorization_server_keys_current import (
+    store_oauth_authorization_server_keys_current_get_and_cache,
+)
 from store_oauth_authorization_server_session import (
     SessionValue,
-    get_session_value,
-    put_session_value,
+    store_oauth_authorization_server_session_get,
+    store_oauth_authorization_server_session_put,
 )
 
 available_scopes = []
@@ -36,7 +42,7 @@ for api in apis:
     for required_scope in apis[api][1]:
         if required_scope not in available_scopes:
             available_scopes.append(required_scope)
-log(__file__, "Available scopes:", available_scopes)
+helper_log(__file__, "Available scopes:", available_scopes)
 
 
 def _make_url(code, code_value, redirect_uri):
@@ -49,12 +55,12 @@ def _make_url(code, code_value, redirect_uri):
     return url
 
 
-def oauth_authorization_server_openid_configuration(http):
+def route_oauth_authorization_server_openid_configuration(http):
     http.response.body = {
-        "issuer": url,
-        "authorization_endpoint": url + "/oauth/authorize",
-        "token_endpoint": url + "/oauth/token",
-        "jwks_uri": url + "/.well-known/jwks.json",
+        "issuer": config_url,
+        "authorization_endpoint": config_url + "/oauth/authorize",
+        "token_endpoint": config_url + "/oauth/token",
+        "jwks_uri": config_url + "/.well-known/jwks.json",
         "grant_types_supported": [
             "authorization_code",
             "client_credentials",
@@ -74,7 +80,7 @@ def _get_scopes(q):
     return scopes
 
 
-def oauth_authorization_server_authorize(http):
+def route_oauth_authorization_server_authorize(http):
     q = urllib.parse.parse_qs(
         http.request.query,
         keep_blank_values=False,
@@ -91,7 +97,7 @@ def oauth_authorization_server_authorize(http):
     assert len(q["code_challenge"]) == 1
     assert len(q["client_id"]) == 1
     client_id = q["client_id"][0]
-    client = get_code_client(client_id)
+    client = store_oauth_authorization_server_code_pkce_get(client_id)
     scopes = _get_scopes(q)
     # XXX Assert scopes are allowed in the client
     assert client.scopes, client.scopes
@@ -99,7 +105,7 @@ def oauth_authorization_server_authorize(http):
     if "state" in q:
         assert len(q["state"]) == 1
         state = q["state"][0]
-    session_id = get_session_id(http, "oauth")
+    session_id = http_session_get_id(http, "oauth")
     logged_in = False
     approved_scopes = False
     sub = None
@@ -107,7 +113,7 @@ def oauth_authorization_server_authorize(http):
         logged_in = True
         approved_scopes = True
         sub = "sub2"
-    new_code = helper_pkce.code_verifier()
+    new_code = helper_pkce_code_verifier()
     code_value = CodeValue(
         client_id=client_id,
         code_challenge=q["code_challenge"][0],
@@ -115,7 +121,7 @@ def oauth_authorization_server_authorize(http):
         state=state,
         sub=sub,
     )
-    put_code_value(new_code, code_value)
+    store_oauth_authorization_server_codes_put(new_code, code_value)
     if logged_in and approved_scopes:
         # We know the sub, so we can issue the code
         url = _make_url(new_code, code_value, client.redirect_uri)
@@ -124,13 +130,15 @@ def oauth_authorization_server_authorize(http):
         http.response.body = "Redirecting ..."
     else:
         # At this point we need some sort of session so that we can handle login interactions and then update the claims with the sub (and anything else)
-        session_id = login(http, "oauth")
-        put_session_value(session_id, SessionValue(code=new_code))
-        http.response.body = meta_refresh_html("/oauth/login")
+        session_id = http_session_create(http, "oauth")
+        store_oauth_authorization_server_session_put(
+            session_id, SessionValue(code=new_code)
+        )
+        http.response.body = helper_meta_refresh_html("/oauth/login")
 
 
-def oauth_authorization_server_login(http):
-    session_id = get_session_id(http, "oauth")
+def route_oauth_authorization_server_login(http):
+    session_id = http_session_get_id(http, "oauth")
     if not session_id:
         return
     sub = ""
@@ -155,27 +163,29 @@ def oauth_authorization_server_login(http):
             </form>
             <p>Session ID is: {session_id}"""
         ).format(session_id=session_id, sub=sub)
-        http.response.body = render_main(title="Login", body=form)
+        http.response.body = render(title="Login", body=form)
     else:
-        session = get_session_value(session_id)
-        set_code_sub(session.code, sub)
+        session = store_oauth_authorization_server_session_get(session_id)
+        store_oauth_authorization_server_codes_set_sub(session.code, sub)
         # XXX This should actually lookup consent, and if needed redirect to the consent screen
         code_value = get_code_value(session.code)
         url = _make_url(
-            session.code, code_value, get_code_client(code_value.client_id).redirect_uri
+            session.code,
+            code_value,
+            store_oauth_authorization_server_code_pkce_get(
+                code_value.client_id
+            ).redirect_uri,
         )
         http.response.status = "302 Redirect"
         http.response.headers["location"] = url
         http.response.body = "Redirecting ..."
 
 
-def oauth_authorization_server_consent(http):
-    http.response.body = render_main(
-        title="Not yet", body="Need to ask for consent here."
-    )
+def route_oauth_authorization_server_consent(http):
+    http.response.body = render(title="Not yet", body="Need to ask for consent here.")
 
 
-def oauth_authorization_server_token(http):
+def route_oauth_authorization_server_token(http):
     # For client credentials
     # See https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
     # grant_type=client_credentials
@@ -214,14 +224,14 @@ def oauth_authorization_server_token(http):
                 "error_description": "Expected basic Authorization header",
             }
             return
-        log(__file__, "Basic authorization header:", creds[6:])
-        log(
+        helper_log(__file__, "Basic authorization header:", creds[6:])
+        helper_log(
             __file__, "Base64 decoded basic header:", base64.b64decode(creds[6:] + "==")
         )
         client_id, secret = base64.b64decode(creds[6:] + "==").decode("utf8").split(":")
         # XXX This isn't quite right
         sub = client_id
-        client = get_client_credentials_client(client_id)
+        client = store_oauth_authorization_server_client_credentials_get(client_id)
         if secret != client.client_secret:
             http.response.body = {
                 "error": "invalid_client",
@@ -241,14 +251,14 @@ def oauth_authorization_server_token(http):
         assert len(q["code_verifier"]) == 1
         code = q["code"][0]
         code_verifier = q["code_verifier"][0]
-        code_value = get_and_delete_code_value(code)
+        code_value = store_oauth_authorization_server_codes_get_and_delete(code)
         if code_value.sub is None or code_value.scopes is None:
             raise Exception("Not completed auth flow before trying to get token")
         client_id = code_value.client_id
         code_challenge = code_value.code_challenge
         scopes = code_value.scopes
         sub = code_value.sub
-        log(
+        helper_log(
             __file__,
             "Authorize code params:",
             code,
@@ -258,23 +268,23 @@ def oauth_authorization_server_token(http):
             sub,
         )
         # This is the key check - if the code_challenge we recieved at the start can be generated from this code verifier, it is the same client and we can issue a token.
-        assert helper_pkce.code_challenge(code_verifier) == code_challenge
+        assert helper_pkce_code_challenge(code_verifier) == code_challenge
     expires_in = 600
     http.response.status = "200 OK"
     http.response.body = {
-        "access_token": sign_jwt(
+        "access_token": helper_oauth_authorization_server_sign_jwt(
             client_id=client_id,
             sub=sub,
             expires_in=expires_in,
             scopes=scopes,
-            kid=get_and_cache_current_kid_value(),
+            kid=store_oauth_authorization_server_keys_current_get_and_cache(),
         ),
         "token_type": "bearer",
         "expires_in": expires_in,
     }
 
 
-oauth_authorization_server_jwks_json = static(
-    oauth_authorization_server_jwks_json_path,
+route_oauth_authorization_server_jwks_json = route_static(
+    config_oauth_authorization_server_jwks_json_path,
     "application/json; charset=UTF8",
 )

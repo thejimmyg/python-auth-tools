@@ -3,7 +3,7 @@ import hashlib
 import secrets
 
 
-def code_verifier():
+def helper_pkce_code_verifier():
     # https://docs.python.org/3/library/secrets.html#secrets.token_urlsafe
     # This means we aren't using the allowed '.' or '~' keys, but our pkce token is long
     code_verifier = secrets.token_urlsafe(96)[:128]
@@ -11,7 +11,7 @@ def code_verifier():
     return code_verifier
 
 
-def code_challenge(code_verifier):
+def helper_pkce_code_challenge(code_verifier):
     hashed = hashlib.sha256(code_verifier.encode("ascii")).digest()
     encoded = base64.urlsafe_b64encode(hashed)
     # Needs to be 43 characters

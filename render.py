@@ -24,7 +24,7 @@ main_markup = Markup(
 )
 
 
-def render_main(title: str, body: Markup = Markup("")):
+def render(title: str, body: Markup = Markup("")):
     return helper_hooks.hooks.get("main_markup", main_markup).format(
         title=title, body=body
     )

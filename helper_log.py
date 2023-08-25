@@ -1,5 +1,5 @@
 import sys
 
 
-def log(*k, **p):
+def helper_log(*k, **p):
     print(file=sys.stderr, *k, **p)

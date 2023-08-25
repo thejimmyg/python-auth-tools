@@ -3,7 +3,9 @@ import hashlib
 import os
 import urllib.parse
 
-from config_common import gzipped_dir
+from config import config_tmp_dir
+
+config_gzipped_dir = os.path.join(config_tmp_dir, "gzipped")
 
 # XXX There is a bug in static() where if the source file mtime changes, it is still serving the old cached version with the etag. We probably don't want it to do that.
 
@@ -12,7 +14,7 @@ from config_common import gzipped_dir
 etags: dict[tuple[str, str, str], str] = {}
 
 
-def static(filename, content_type):
+def route_static(filename, content_type):
     def static_filename(http):
         encoding = "none"
         mtime = os.stat(filename).st_mtime
@@ -29,7 +31,7 @@ def static(filename, content_type):
             return
         if "gzip" in http.request.headers.get("accept-encoding", ""):
             http.response.headers["content-encoding"] = "gzip"
-            tmp_filename = os.path.join(gzipped_dir, filename)
+            tmp_filename = os.path.join(config_gzipped_dir, filename)
             os.makedirs(os.path.split(tmp_filename)[0], exist_ok=True)
             if (
                 not os.path.exists(tmp_filename)
@@ -56,7 +58,7 @@ def static(filename, content_type):
     return static_filename
 
 
-def static_gz_dir(url, path, content_type, ext):
+def route_static_gz_dir(url, path, content_type, ext):
     "This is for a static directory of files of the same content type, where the content is alredy gzipped. No etag caching is done."
 
     def static_gz_dir_handler(http):
@@ -73,7 +75,7 @@ def static_gz_dir(url, path, content_type, ext):
     return static_gz_dir_handler
 
 
-def static_dir(url, path, content_type, ext):
+def route_static_dir(url, path, content_type, ext):
     "This is for a static directory of files of the same content type. No etag caching is done."
 
     def static_dir_handler(http):

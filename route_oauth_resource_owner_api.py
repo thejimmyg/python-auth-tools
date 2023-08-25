@@ -5,8 +5,10 @@ import json
 
 from pydantic import BaseModel
 
-from helper_log import log
-from http_oauth_resource_owner import verify_jwt_and_return_claims
+from helper_log import helper_log
+from http_oauth_resource_owner import (
+    http_oauth_resource_owner_verify_jwt_and_return_claims,
+)
 
 
 class Claims(BaseModel):
@@ -20,9 +22,9 @@ def claims(claims) -> Claims:
 apis = {"claims": [claims, ["read"]]}
 
 
-def v1(http):
-    claims_ = verify_jwt_and_return_claims(http)
-    log(__file__, "Claims:", claims_, type(claims_))
+def route_oauth_resource_owner_api_v1(http):
+    claims_ = http_oauth_resource_owner_verify_jwt_and_return_claims(http)
+    helper_log(__file__, "Claims:", claims_, type(claims_))
     api = "claims"
     scopes = claims_.get("scope", "").split(" ")
     for scope in apis[api][1]:

@@ -27,6 +27,7 @@ I'd like this code to run in multiple very different environments like Raspberry
 * There aren't really any classes, they aren't needed. Instead each module is designed to be used once (singleton pattern) and so can store its state in module-level global variables. This means everything can be normal Python functions. The code does uses classes for data validation though. If you need to use the same component twice, make a copy of the files with a different name. The implementations will probably diverge over time anyway, so in the long term you'll reduce bugs.
 * There is a hooks system so that you can customise the behaviour of the existing code without needing classes/inheritance etc.
 * The code isn't threadsafe, instead it uses gevent for cooperative multitasking making it very efficient in a single process. You an safely run multiple processes at once on the same computer and round-robin proxy to each if you want to make the most of the available CPUs.
+* All HTTP headers are lowercase. If you set or try to access anything not lowercase, it won't error, but the behaviour is undefined.
 
 ## Understanding Hooks
 
@@ -78,10 +79,10 @@ source .venv/bin/activate
 ```
 
 ```sh
-python3 cli_oauth_authorization_server_put_client_credentials_client.py hooks_test client secret read
-python3 cli_oauth_authorization_server_put_code_client.py hooks_test client http://localhost:16001/oauth-client/callback read
-python3 cli_oauth_authorization_server_generate_keys.py hooks_test test
-python3 cli_oauth_authorization_server_set_current_key.py hooks_test test
+python3 cli_oauth_authorization_server_client_credentials_put.py hooks_test client secret read
+python3 cli_oauth_authorization_server_code_pkce_put.py hooks_test client http://localhost:16001/oauth-code-pkce/callback read
+python3 cli_oauth_authorization_server_keys_generate.py hooks_test test
+python3 cli_oauth_authorization_server_keys_current_set.py hooks_test test
 ```
 
 ```sh
@@ -95,21 +96,21 @@ source .venv/bin/activate
 ```
 
 ```sh
-export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py client sub "read" test` && echo $TOKEN
-python3 cli_oauth_resource_owner_verify_jwt.py "$TOKEN"
+export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py hooks_test client sub "read" test` && echo $TOKEN
+python3 cli_oauth_resource_owner_verify_jwt.py hooks_test "$TOKEN"
 curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```
 
 ```sh
-python3 cli_webhook_generate_keys.py hooks_test test
-python3 cli_webhook_set_current_key.py hooks_test test
+python3 cli_webhook_provider_keys_generate.py hooks_test test
+python3 cli_webhook_provider_keys_current_set.py hooks_test test
 export PAYLOAD='{"hello": "world"}'
-export SIG=`python3 cli_webhook_sign_jwt.py "$PAYLOAD" test` && echo $SIG
-python3 cli_webhook_consumer_verify_jwt.py "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-jwks.json"
+export SIG=`python3 cli_webhook_provider_sign_jwt.py hooks_test "$PAYLOAD" test` && echo $SIG
+python3 cli_webhook_consumer_verify_jwt.py hooks_test "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-provider-jwks.json"
 ```
 
 ```sh
-python3 cli_oauth_client_flow_client_credentials.py client secret read
+python3 cli_oauth_client_credentials.py hooks_test client secret read
 ```
 
 ## Test
@@ -168,10 +169,10 @@ Create you own plugin:
 
 ```sh
 cat << EOF > my_app.py
-from route_static import static
+from route_static import route_static
 
 routes = {
-    "/": static("python-auth-tools/static/file", "text/plain"),
+    "/": route_static("python-auth-tools/static/file", "text/plain"),
 }
 EOF
 ```
@@ -275,33 +276,31 @@ The storage for a Code + PKCE client looks like this:
 
 ```mermaid
 erDiagram
-    oauth_client_flow_code {
+    oauth_code_pkce {
         string client_id
     }
-    oauth_client_flow_code_pkce_code_verifier {
+    oauth_code_pkce_code_verifier {
         string state
         string code_verifier
     }
-    oauth_client_flow_code ||--|{ oauth_client_flow_code_pkce_code_verifier : "has many"
+    oauth_code_pkce ||--|{ oauth_code_pkce_code_verifier : "has many"
 ```
 
 And for a client credentials client there isn't really any storage needed beacuase the client_id, secret, and requested scopes are all passed at the time of the flow:
 
 ```mermaid
 erDiagram
-    oauth_client_flow_client_credentials {
+    oauth_client_credentials {
     }
 ```
 
 The webhook provider structure is similar to the keys part of the OAuth Authorization Server:
 
-XXX Should webhook be named webhook_provider everywhere to make it clearer?
-
 ```mermaid
 erDiagram
-    webhook ||--|{ webhook_key : "has many"
-    webhook ||--|| webhook_current_key : "exactly one"
-    webhook_jwks ||--|{ webhook_key : "has many"
+    webhook_provider ||--|{ webhook_provider_key : "has many"
+    webhook_provider ||--|| webhook_provider_current_key : "exactly one"
+    webhook_provider_jwks ||--|{ webhook_provider_key : "has many"
 ```
 
 ## OAuth Code + PKCE Flow
@@ -310,7 +309,7 @@ This misses out scope checks too.
 
 ```mermaid
 sequenceDiagram
-    User's Browser->>OAuth Client Server: /oauth-client/login?scope=<scopes>
+    User's Browser->>OAuth Client Server: /oauth-code-pkce/login?scope=<scopes>
     OAuth Client Server->>OAuth Client Server: Generate a code verifier and state, derive a code challenge from the code verifier
     OAuth Client Server->>Code Verifier Store: Save state: code_verifier
     OAuth Client Server->>User's Browser: HTTP redirect response with Location set to authorize URL redirect
@@ -319,7 +318,7 @@ sequenceDiagram
     OAuth Authorization Server->>OAuth Authorization Server: Generate code value
     OAuth Authorization Server->>Code Value Store: Save code: client_id, code_challenge, scopes, state, sub
     OAuth Authorization Server->>User's Browser: HTTP redirect response with Location set to client redirect uri
-    User's Browser->>OAuth Client Server: /oauth-client/callback?state=<state>&code=<code>
+    User's Browser->>OAuth Client Server: /oauth-code-pkce/callback?state=<state>&code=<code>
     OAuth Client Server->>Code Verifier Store: get and delete code_verifier using state <state>
     Code Verifier Store->>OAuth Client Server: <code_verifier>
     OAuth Client Server->>OAuth Authorization Server: Ask for token on the server /oauth/token?code_verifier=<code_verifier>&code=<code>&grant_type=code
@@ -373,7 +372,7 @@ Send an event to a webhook consumer:
 
 ```mermaid
 sequenceDiagram
-    Resource Owner->>Webhook Provider: Trigger webhooks with an event <payload> {iss: ..., event: ...}
+    Resource Owner->>Webhook Provider: Trigger webhook consumers with an event <payload> {iss: ..., event: ...}
     Webhook Provider->>Webhook Current Key Store: Get and cache current key
     Webhook Current Key Store->>Webhook Provider: <kid>
     Webhook Provider->>Webhook Private Key Directory: Read private key <kid>
@@ -390,7 +389,7 @@ sequenceDiagram
     Webhook Consumer->>Webhook Consumer: read <iss> from payload body and verify it is the issuer we expect (XXX We don't verify yet?)
     Webhook Consumer->>Webhook Consumer: base64 encode the whole body to <body_base64_encoded>
     Webhook Consumer->>Webhook Consumer: read the authorisation header and re-assemble a <jwt> by putting <body_base64> in between the .. characters of the detatched token
-    Webhook Consumer->>Webhook Provider: Get and cache keys from <iss>/.well-known/webhook-jwks.json # XXX This URL is non-standard, but I think it is a sensible location
+    Webhook Consumer->>Webhook Provider: Get and cache keys from <iss>/.well-known/webhook-provider-jwks.json # XXX This URL is non-standard, but I think it is a sensible location
     Webhook Provider->>Webhook Consumer: {keys: [{kid: <kid1>, ...}]}
     Webhook Consumer->>Webhook Consumer: Extract <kid> from the generated <jwt>
     Webhook Consumer->>Webhook Consumer: Find the corresponding public keys in the JWKS response

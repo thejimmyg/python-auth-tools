@@ -5,22 +5,22 @@ from threading import Lock
 from cachetools import TTLCache, cached
 
 from config_oauth_authorization_server import (
-    oauth_authorization_server_store_keys_dbpath,
+    config_oauth_authorization_server_keys_db_path,
 )
 
 _db = None
 
 
-def oauth_authorization_server_current_key_init():
+def store_oauth_authorization_server_keys_current_init():
     global _db
-    _db = dbm.open(oauth_authorization_server_store_keys_dbpath, "c")
+    _db = dbm.open(config_oauth_authorization_server_keys_db_path, "c")
 
 
-def oauth_authorization_server_current_key_cleanup():
+def store_oauth_authorization_server_keys_current_cleanup():
     _db.close()
 
 
-def put_current_kid_value(kid: str):
+def store_oauth_authorization_server_keys_current_put(kid: str):
     _db[b"current"] = kid.encode("utf8")
 
 
@@ -30,5 +30,5 @@ current_kid_value_cache = TTLCache(
 
 
 @cached(cache=current_kid_value_cache, lock=Lock())
-def get_and_cache_current_kid_value():
+def store_oauth_authorization_server_keys_current_get_and_cache():
     return _db[b"current"].decode("utf8")

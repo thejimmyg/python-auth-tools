@@ -5,7 +5,7 @@ from saml2.client import Saml2Client
 from saml2.config import Config
 from saml2.sigver import get_xmlsec_binary
 
-from config_common import url
+from config import config_url
 
 
 @dataclass
@@ -29,7 +29,7 @@ def saml_client():
         # Currently xmlsec1 binaries are used for all the signing and encryption stuff.This option defines where the binary is situated.
         "xmlsec_binary": xmlsec_path,
         # The SP ID. It is recommended that the entityid should point to a real webpage where the metadata for the entity can be found.
-        "entityid": url + "/sample_sp",
+        "entityid": config_url + "/sample_sp",
         # Indicates that attributes that are not recognized (they are not configured in attribute-mapping), will not be discarded.
         "allow_unknown_attributes": True,
         "service": {
@@ -37,7 +37,7 @@ def saml_client():
                 "endpoints": {
                     "assertion_consumer_service": [
                         ##as mentioned in the sequence diagram we can use either redirect or post here.
-                        (url + "/saml2/acs/", BINDING_HTTP_POST),
+                        (config_url + "/saml2/acs/", BINDING_HTTP_POST),
                     ]
                 },
                 # Don't verify that the incoming requests originate from us via the built-in cache for authn request ids in pysaml2

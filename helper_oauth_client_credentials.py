@@ -2,10 +2,10 @@ import base64
 import json
 import urllib.request
 
-from helper_log import log
+from helper_log import helper_log
 
 
-def client_credentials_token(token_endpoint, client, secret, scopes=None):
+def helper_oauth_client_credentials_token(token_endpoint, client, secret, scopes=None):
     if scopes is None:
         scopes = []
     request = urllib.request.Request(
@@ -21,6 +21,6 @@ def client_credentials_token(token_endpoint, client, secret, scopes=None):
         with urllib.request.urlopen(request) as fp:
             response = json.loads(fp.read())
     except urllib.error.HTTPError as e:
-        log(__file__, "ERROR:", e.read().decode())
+        helper_log(__file__, "ERROR:", e.read().decode())
         raise
     return response

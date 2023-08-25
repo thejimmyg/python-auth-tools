@@ -23,8 +23,8 @@ import traceback
 
 from markupsafe import Markup
 
-from helper_http import handle
-from helper_log import log
+from helper_http import helper_http_handle
+from helper_log import helper_log
 
 
 class BadRequest(Exception):
@@ -32,7 +32,7 @@ class BadRequest(Exception):
 
 
 # Runs for each incoming connection in a dedicated greenlet
-def server(routes):
+def serve_gevent(routes):
     def serve(socket, address):
         reader = socket.makefile(mode="rb")
         try:
@@ -72,7 +72,7 @@ def server(routes):
                 request_body = None
                 if "content-length" in request_headers:
                     request_body = reader.read(int(request_headers["content-length"]))
-                http = handle(
+                http = helper_http_handle(
                     routes, method, path, query, request_headers, request_body
                 )
                 response_body_changed = False
@@ -148,13 +148,13 @@ def server(routes):
             # The connection is already closed, nothing to do
             pass
         except BadRequest as e:
-            log(__file__, "Bad Request ERROR:", e)
+            helper_log(__file__, "Bad Request ERROR:", e)
             response = b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 11\r\n\r\nBad Request"
             socket.sendall(response)
             reader.close()
         # https://stackoverflow.com/questions/7160983/catching-all-exceptions-in-python
         except Exception:
-            log(__file__, "ERROR:", traceback.format_exc())
+            helper_log(__file__, "ERROR:", traceback.format_exc())
             response = b"HTTP/1.1 500 Error\r\nConnection: close\r\nContent-Length: 5\r\n\r\nError"
             socket.sendall(response)
             reader.close()

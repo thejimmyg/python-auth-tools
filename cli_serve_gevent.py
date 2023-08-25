@@ -8,15 +8,19 @@ if __name__ == "__main__":
     from gevent.server import StreamServer
 
     import helper_hooks
-    from config_common import host, port
-    from serve_gevent import server
+    from config import config_host, config_port
+    from serve_gevent import serve_gevent
 
     hook_module_path = sys.argv[1]
-    helper_hooks.setup_hooks(hook_module_path)
+    helper_hooks.helper_hooks_setup(hook_module_path)
 
     server = StreamServer(
-        (host, port),
-        server(helper_hooks.hooks["routes"]),
+        (config_host, config_port),
+        serve_gevent(helper_hooks.hooks["routes"]),
     )
-    print("Starting echo server on {host}:{port}".format(host=host, port=port))
+    print(
+        "Starting echo server on {host}:{port}".format(
+            host=config_host, port=config_port
+        )
+    )
     server.serve_forever()

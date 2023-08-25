@@ -7,7 +7,7 @@ from helper_saml_sp import saml_client
 from render_saml_sp import render_saml_sp_success
 
 
-def saml_login(http):
+def route_saml_sp_login(http):
     client = saml_client()
     request_id, info = client.prepare_for_authenticate()
     redirect_url = dict(info["headers"])["Location"]
@@ -16,7 +16,7 @@ def saml_login(http):
     http.response.body = "Redirecting ..."
 
 
-def saml_acs(http):
+def route_saml_sp_acs(http):
     client = saml_client()
     q = urllib.parse.parse_qs(
         http.request.body.decode("utf8"),

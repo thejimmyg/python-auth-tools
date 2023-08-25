@@ -1,10 +1,10 @@
 from http import cookies
 
-import helper_pkce
-from config_common import host, scheme
+from config import config_host, config_scheme
+from helper_pkce import helper_pkce_code_verifier
 
 
-def get_session_id(http, name):
+def http_session_get_id(http, name):
     cookie = cookies.SimpleCookie()
     if "cookie" in http.request.headers:
         cookie.load(http.request.headers["cookie"])
@@ -13,8 +13,8 @@ def get_session_id(http, name):
     return None
 
 
-def login(http, name):
-    session = helper_pkce.code_verifier()
+def http_session_create(http, name):
+    session = helper_pkce_code_verifier()
     cookie = cookies.SimpleCookie()
     if "cookie" in http.request.headers:
         cookie.load(http.request.headers["cookie"])
@@ -24,9 +24,9 @@ def login(http, name):
     cookie[name]["comment"] = "upstream oauth"
     cookie[name][
         "domain"
-    ] = host  # Can't use the port here https://datatracker.ietf.org/doc/html/rfc2109.html#section-2
+    ] = config_host  # Can't use the port here https://datatracker.ietf.org/doc/html/rfc2109.html#section-2
     cookie[name]["max-age"] = 3600
-    cookie["oauth"]["secure"] = scheme == "https://"
+    cookie["oauth"]["secure"] = config_scheme == "https://"
     cookie[name]["version"] = 1
     cookie[name]["httponly"] = True
     cookie[name]["samesite"] = "Strict"

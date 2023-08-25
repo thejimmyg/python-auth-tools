@@ -2,7 +2,7 @@ import traceback
 
 from pydantic import BaseModel
 
-from helper_log import log
+from helper_log import helper_log
 
 
 class Request(BaseModel):
@@ -29,7 +29,7 @@ class RespondEarly(Exception):
 
 
 # Runs for each HTTP request on a connection
-def handle(routes, method, path, query, request_headers, request_body=None):
+def helper_http_handle(routes, method, path, query, request_headers, request_body=None):
     request = Request(
         path=path,
         query=query or None,
@@ -68,5 +68,5 @@ def handle(routes, method, path, query, request_headers, request_body=None):
         # Keep whatever headers have been set (e.g. cookies), but show a 500
         http.response.status = "500 Error"
         http.response.body = b"500 Error"
-        log(__file__, "ERROR:", traceback.format_exc())
+        helper_log(__file__, "ERROR:", traceback.format_exc())
     return http
