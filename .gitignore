@@ -3,12 +3,15 @@
 /__pycache__
 /chromedriver
 /store/oauth_authorization_server/client_credentials.db
+/store/oauth_authorization_server/code_pkce_consent.db
 /store/oauth_authorization_server/code_pkce.db
 /store/oauth_authorization_server/code_pkce_request.db
+/store/oauth_authorization_server/jwks.json
 /store/oauth_authorization_server/keys.db
 /store/oauth_authorization_server/private_keys/
 /store/oauth_authorization_server/session.db
 /store/oauth_code_pkce/code_verifier.db
+/store/webhook_provider/jwks.json
 /store/webhook_provider/keys.db
 /store/webhook_provider/private_keys/
 /test

@@ -28,3 +28,6 @@ config_oauth_authorization_server_keys_db_path = os.path.join(
 config_oauth_authorization_server_jwks_json_path = os.path.join(
     config_oauth_authorization_server_store_dir, "jwks.json"
 )
+config_oauth_authorization_server_code_pkce_consent_db_path = os.path.join(
+    config_oauth_authorization_server_store_dir, "code_pkce_consent"
+)

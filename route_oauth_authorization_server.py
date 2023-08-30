@@ -26,7 +26,7 @@ from store_oauth_authorization_server_code_pkce_request import (
 from store_oauth_authorization_server_keys_current import (
     store_oauth_authorization_server_keys_current_get_and_cache,
 )
-from store_session import store_session_get
+from store_session import store_session_get, store_session_put
 
 available_scopes = []
 for api in apis:
@@ -34,16 +34,6 @@ for api in apis:
         if required_scope not in available_scopes:
             available_scopes.append(required_scope)
 helper_log(__file__, "Available scopes:", available_scopes)
-
-
-def _make_url(code, code_pkce_request, redirect_uri):
-    url = redirect_uri + "?"
-    if code_pkce_request.state:
-        url += "state=" + urllib.parse.quote(code_pkce_request.state)
-        url += "&code=" + urllib.parse.quote(code)
-    else:
-        url += "code=" + urllib.parse.quote(code)
-    return url
 
 
 def route_oauth_authorization_server_openid_configuration(http):
@@ -100,7 +90,7 @@ def route_oauth_authorization_server_authorize(http):
     session_id = http_session_get_id(http, "oauth")
     if session_id:
         session = store_session_get(session_id)
-        sub = session["sub"]
+        sub = session.sub
         assert sub
         code_pkce_request = CodePkceRequest(
             client_id=client_id,
@@ -109,15 +99,22 @@ def route_oauth_authorization_server_authorize(http):
             state=state,
             sub=sub,  # Can be None to start with, it should be updated later if it is.
         )
+        session.value = dict(code=new_code)
+        store_session_put(session_id, session)
         store_oauth_authorization_server_code_pkce_request_put(
             new_code, code_pkce_request
         )
-        # We know the sub, so we can issue the code
-        url = _make_url(new_code, code_pkce_request, client.redirect_uri)
+        # We can redirect straight to the consent code
         http.response.status = "302 Redirect"
-        http.response.headers["location"] = url
+        http.response.headers["location"] = "/oauth/consent"
         http.response.body = "Redirecting ..."
+        helper_log(__file__, "Redirecting to", "/oauth/consent")
+        return
     else:
+        helper_log(
+            __file__,
+            "Not signed in, preparing code PKCE request without sub, and triggering login hook",
+        )
         code_pkce_request = CodePkceRequest(
             client_id=client_id,
             code_challenge=q["code_challenge"][0],

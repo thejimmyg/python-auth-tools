@@ -8,6 +8,7 @@ from plugin_oauth_test import (
     plugin_oauth_test_route_oauth_authorization_server_login,
 )
 from render import render
+from route_not_found import route_not_found
 from route_oauth_authorization_server import (
     route_oauth_authorization_server_authorize,
     route_oauth_authorization_server_jwks_json,
@@ -33,6 +34,10 @@ from store_oauth_authorization_server_client_credentials import (
 from store_oauth_authorization_server_code_pkce import (
     store_oauth_authorization_server_code_pkce_cleanup,
     store_oauth_authorization_server_code_pkce_init,
+)
+from store_oauth_authorization_server_code_pkce_consent import (
+    store_oauth_authorization_server_code_pkce_consent_cleanup,
+    store_oauth_authorization_server_code_pkce_consent_init,
 )
 from store_oauth_authorization_server_code_pkce_request import (
     store_oauth_authorization_server_code_pkce_request_cleanup,
@@ -62,7 +67,7 @@ def render_home(title: str):
     return render(title=title, body=home_markup)
 
 
-def home(http):
+def route_home(http):
     http.response.body = render_home(title="OAuth Client Home")
 
 
@@ -75,6 +80,7 @@ helper_hooks.hooks = {
         store_oauth_code_pkce_code_verifier_init,
         store_oauth_authorization_server_client_credentials_init,
         store_oauth_authorization_server_code_pkce_init,
+        store_oauth_authorization_server_code_pkce_consent_init,
     ],
     "cleanup": [
         store_oauth_authorization_server_code_pkce_request_cleanup,
@@ -84,11 +90,13 @@ helper_hooks.hooks = {
         store_oauth_code_pkce_code_verifier_cleanup,
         store_oauth_authorization_server_client_credentials_cleanup,
         store_oauth_authorization_server_code_pkce_cleanup,
+        store_oauth_authorization_server_code_pkce_consent_cleanup,
     ],
     "routes": {
         "/saml2/login/": route_saml_sp_login,
         "/saml2/acs/": route_saml_sp_acs,
-        "/": home,
+        "": route_home,
+        "/": route_not_found,
         "/api": route_oauth_resource_owner_home,
         "/api/v1": route_oauth_resource_owner_api_v1,
         "/api/openapi.json": route_oauth_resource_owner_openapi,

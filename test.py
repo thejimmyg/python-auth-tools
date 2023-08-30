@@ -24,6 +24,8 @@ from store_oauth_authorization_server_code_pkce_request import (
 )
 from store_session import Session, store_session_get, store_session_put
 
+wiggle_room = 2
+
 
 def test_store():
     # store_oauth_authorization_server_code_pkce_request
@@ -51,7 +53,9 @@ def test_store():
         Session(value=dict(code=code)),
     )
     v = store_session_get("123")
-    assert v == Session(value=dict(code=code)), v
+    assert v.value == dict(code=code)
+    assert v.csrf is not None
+    assert v.sub is None
 
     # store_oauth_code_pkce_code_verifier
     # XXX
@@ -148,6 +152,14 @@ def test_render():
     ), render_saml_sp_success(session_info={})
 
 
+def _login_as(driver, test_sub):
+    assert "Login" in driver.page_source
+    elem = driver.find_element(By.NAME, "sub")
+    elem.clear()
+    elem.send_keys(test_sub)
+    elem.send_keys(Keys.RETURN)
+
+
 def oauth_code_pkce_browser(driver, url):
     print()
     print("Browser test", url)
@@ -155,13 +167,11 @@ def oauth_code_pkce_browser(driver, url):
     assert "OAuth Client Home" in driver.title
     elem = driver.find_element(By.LINK_TEXT, "Login without scopes")
     elem.click()
-    assert "Login" in driver.page_source
-    elem = driver.find_element(By.NAME, "sub")
-    elem.clear()
+
     now = math.floor(time.time())  # Round down
     test_sub = "test_sub_{}".format(now)
-    elem.send_keys(test_sub)
-    elem.send_keys(Keys.RETURN)
+    _login_as(driver, test_sub)
+
     elem = driver.find_element(By.ID, "jwt")
     jwt = elem.text
     claims = helper_oauth_resource_owner_verify_jwt(jwt)
@@ -169,7 +179,6 @@ def oauth_code_pkce_browser(driver, url):
     # assert oidc['issuer'] == url
     # assert oidc['authorization_endpoint'] = url + '/oauth/authorize',
     # assert oidc['token_endpoint'] =  url+'/oauth/token', 'jwks_uri': url + '/.well-known/jwks.json', 'grant_types_supported': ['authorization_code', 'client_credentials'], 'token_endpoint_auth_methods_supported': ['client_secret_basic'], 'scopes_supported': ['openid', 'profile'], 'code_challenge_methods_supported': ['S256']}
-    wiggle_room = 2
     assert claims["aud"] == "client"
     assert claims["exp"] > now and claims["exp"] <= now + 600 + wiggle_room
     assert claims["iat"] >= now and claims["iat"] <= now + wiggle_room, (
@@ -178,6 +187,78 @@ def oauth_code_pkce_browser(driver, url):
     )
     assert claims["iss"] == url
     assert claims["sub"] == test_sub
+    assert "scope" not in claims
+    return jwt, claims, test_sub
+
+
+def oauth_code_pkce_browser_read_scope(driver, url):
+    print()
+    print("Browser test", url)
+    driver.get(url + "/")
+    assert "OAuth Client Home" in driver.title
+    elem = driver.find_element(By.LINK_TEXT, "login with read scope")
+    elem.click()
+
+    now = math.floor(time.time())  # Round down
+    test_sub = "test_sub_{}".format(now)
+    _login_as(driver, test_sub)
+
+    elem = driver.find_element(By.ID, "consent-msg")
+    assert elem.text == "Need to ask for consent here."
+
+
+def oauth_code_pkce_browser_already_logged_in(driver, url, test_sub):
+    print()
+    print("Browser test when already logged in", url)
+    now = math.floor(time.time())  # Round down
+    driver.get(url + "/")
+    assert "OAuth Client Home" in driver.title
+    elem = driver.find_element(By.LINK_TEXT, "Login without scopes")
+    elem.click()
+    elem = driver.find_element(By.ID, "jwt")
+    jwt = elem.text
+    claims = helper_oauth_resource_owner_verify_jwt(jwt)
+    assert claims["aud"] == "client"
+    assert claims["exp"] > now and claims["exp"] <= now + 600 + wiggle_room
+    assert claims["iat"] >= now and claims["iat"] <= now + wiggle_room, (
+        "HEY! What is going on!",
+        claims["iat"],
+        now,
+        now + wiggle_room,
+    )
+    assert claims["iss"] == url
+    assert claims["sub"] == test_sub
+    return jwt, claims
+
+
+def oauth_code_pkce_browser_already_logged_in_read_scope(driver, url, test_sub):
+    print()
+    print("Browser test when already logged in", url)
+    now = math.floor(time.time())  # Round down
+    driver.get(url + "/")
+    assert "OAuth Client Home" in driver.title
+    elem = driver.find_element(By.LINK_TEXT, "login with read scope")
+    elem.click()
+
+    now = math.floor(time.time())  # Round down
+    "test_sub_{}".format(now)
+
+    elem = driver.find_element(By.ID, "consent-msg")
+    assert elem.text == "Need to ask for consent here."
+
+
+def oauth_code_pkce_browser_invalid_scope(driver, url):
+    print()
+    print("Browser test when already logged in", url)
+    now = math.floor(time.time())  # Round down
+    driver.get(url + "/")
+    assert "OAuth Client Home" in driver.title
+    elem = driver.find_element(By.LINK_TEXT, "login with an invalid scope")
+    elem.click()
+    # Obviously we'd like to do better in future, perhaps by calling back with an invalid scope message in the JSON
+    assert (
+        driver.find_element(By.TAG_NAME, "body").text == "500 Error"
+    ), driver.getPageSource()
 
 
 def saml_sp_flow(driver, url):
@@ -555,9 +636,25 @@ if __name__ == "__main__":
         raise Exception("Invalid signature failed to raise an exception")
 
     driver = webdriver.Chrome()
-    oauth_code_pkce_browser(driver, url)
+    browser_jwt, browser_claims, test_sub = oauth_code_pkce_browser(driver, url)
     saml_sp_flow(driver, url)
+    (
+        browser_jwt_already_logged_in,
+        browser_claims_already_logged_in,
+    ) = oauth_code_pkce_browser_already_logged_in(driver, url, test_sub)
+    assert browser_jwt != browser_jwt_already_logged_in
+    assert browser_claims["sub"] == browser_claims_already_logged_in["sub"]
+    assert browser_claims["exp"] < browser_claims_already_logged_in["exp"]
+    assert "scope" not in browser_claims
+    assert "scope" not in browser_claims_already_logged_in
+    oauth_code_pkce_browser_already_logged_in_read_scope(driver, url, test_sub)
+    driver.close()
+
+    driver = webdriver.Chrome()
+    oauth_code_pkce_browser_invalid_scope(driver, url)
+    oauth_code_pkce_browser_read_scope(driver, url)
+    driver.close()
+
     p.kill()
     server_thread.join()
-    driver.close()
     print("SUCCESS! Server logs in:", log_path)

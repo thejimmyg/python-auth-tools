@@ -1,5 +1,7 @@
 import json
+import math
 import os
+import urllib.parse
 from datetime import datetime as dt
 
 from jwcrypto import jwk, jwt
@@ -55,7 +57,7 @@ def helper_oauth_authorization_server_sign_jwt(
             "rb",
         ) as fp:
             private_keys[kid] = json.loads(fp.read())
-    now = int(dt.now().timestamp())
+    now = math.floor(dt.now().timestamp())
     jwt_claims = {
         "iss": config_url,
         "sub": sub,
@@ -78,3 +80,15 @@ def helper_oauth_authorization_server_sign_jwt(
     jwt_token.make_signed_token(jwk.JWK(**private_keys[kid]))
     signed_jwt = jwt_token.serialize()
     return signed_jwt
+
+
+def helper_oauth_authorization_server_prepare_redirect_uri(
+    code, code_pkce_request, redirect_uri
+):
+    url = redirect_uri + "?"
+    if code_pkce_request.state:
+        url += "state=" + urllib.parse.quote(code_pkce_request.state)
+        url += "&code=" + urllib.parse.quote(code)
+    else:
+        url += "code=" + urllib.parse.quote(code)
+    return url

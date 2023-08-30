@@ -4,11 +4,16 @@ from markupsafe import Markup
 
 from helper_log import helper_log
 from helper_meta_refresh import helper_meta_refresh_html
+from helper_oauth_authorization_server import (
+    helper_oauth_authorization_server_prepare_redirect_uri,
+)
 from http_session import http_session_create, http_session_get_id
 from render import render
-from route_oauth_authorization_server import _make_url
 from store_oauth_authorization_server_code_pkce import (
     store_oauth_authorization_server_code_pkce_get,
+)
+from store_oauth_authorization_server_code_pkce_consent import (
+    store_oauth_authorization_code_pkce_consent_get,
 )
 from store_oauth_authorization_server_code_pkce_request import (
     store_oauth_authorization_code_pkce_request_get,
@@ -45,8 +50,11 @@ def plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_sign
 
 
 def plugin_oauth_test_route_oauth_authorization_server_login(http):
+    helper_log(__file__, "In login hook")
     session_id = http_session_get_id(http, "oauth")
     if not session_id:
+        http.response.status = "401 Not Authenticated"
+        http.response.body = "401 Not Authenticated"
         return
     sub = ""
     if http.request.method == "post":
@@ -77,21 +85,50 @@ def plugin_oauth_test_route_oauth_authorization_server_login(http):
         store_oauth_authorization_server_code_pkce_request_set_sub(
             session.value["code"], sub
         )
-        # XXX This should actually lookup consent, and if needed redirect to the consent screen
-        code_pkce_request = store_oauth_authorization_code_pkce_request_get(
-            session.value["code"]
-        )
-        url = _make_url(
-            session.value["code"],
-            code_pkce_request,
-            store_oauth_authorization_server_code_pkce_get(
-                code_pkce_request.client_id
-            ).redirect_uri,
-        )
         http.response.status = "302 Redirect"
-        http.response.headers["location"] = url
+        http.response.headers["location"] = "/oauth/consent"
         http.response.body = "Redirecting ..."
+        helper_log(__file__, "Redirecting to", "/oauth/consent")
 
 
 def plugin_oauth_test_route_oauth_authorization_server_consent(http):
-    http.response.body = render(title="Not yet", body="Need to ask for consent here.")
+    session_id = http_session_get_id(http, "oauth")
+    if not session_id:
+        http.response.status = "401 Not Authenticated"
+        http.response.body = "401 Not Authenticated"
+        return
+    session = store_session_get(session_id)
+    code_pkce_request = store_oauth_authorization_code_pkce_request_get(
+        session.value["code"]
+    )
+    url = helper_oauth_authorization_server_prepare_redirect_uri(
+        session.value["code"],
+        code_pkce_request,
+        store_oauth_authorization_server_code_pkce_get(
+            code_pkce_request.client_id
+        ).redirect_uri,
+    )
+    if not code_pkce_request.scopes:
+        http.response.body = helper_meta_refresh_html(url)
+        return
+    try:
+        code_pkce_consent = store_oauth_authorization_code_pkce_consent_get(
+            session.sub, code_pkce_request.client_id
+        )
+        print("\n\n=========================\n\n", code_pkce_consent)
+        for scope in code_pkce_request.scopes:
+            if scope not in code_pkce_consent.scopes:
+                raise Exception("Scope not consented to", scope)
+        # Otherwise we're all good. Redirect
+        http.response.body = helper_meta_refresh_html(url)
+        return
+    except Exception:
+        helper_log(
+            __file__,
+            f"No code PKCE consent for {session.sub} {code_pkce_request.client_id}",
+        )
+        http.response.body = render(
+            title="Not yet",
+            body=Markup('<span id="consent-msg">Need to ask for consent here.</span>'),
+        )
+        return
