@@ -16,11 +16,11 @@ config_oauth_authorization_server_client_credentials_db_path = os.path.join(
 config_oauth_authorization_server_code_pkce_db_path = os.path.join(
     config_oauth_authorization_server_store_dir, "code_pkce"
 )
-config_oauth_authorization_server_codes_db_path = os.path.join(
-    config_oauth_authorization_server_store_dir, "codes"
+config_oauth_authorization_server_code_pkce_request_db_path = os.path.join(
+    config_oauth_authorization_server_store_dir, "code_pkce_request"
 )
-config_oauth_authorization_server_sessions_db_path = os.path.join(
-    config_oauth_authorization_server_store_dir, "sessions"
+config_oauth_authorization_server_session_db_path = os.path.join(
+    config_oauth_authorization_server_store_dir, "session"
 )
 config_oauth_authorization_server_keys_db_path = os.path.join(
     config_oauth_authorization_server_store_dir, "keys"

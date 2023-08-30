@@ -1,12 +1,16 @@
 from markupsafe import Markup
 
 import helper_hooks
+from plugin_oauth_test import (
+    plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
+    plugin_oauth_test_hook_oauth_code_pkce_on_success,
+    plugin_oauth_test_route_oauth_authorization_server_consent,
+    plugin_oauth_test_route_oauth_authorization_server_login,
+)
 from render import render
 from route_oauth_authorization_server import (
     route_oauth_authorization_server_authorize,
-    route_oauth_authorization_server_consent,
     route_oauth_authorization_server_jwks_json,
-    route_oauth_authorization_server_login,
     route_oauth_authorization_server_openid_configuration,
     route_oauth_authorization_server_token,
 )
@@ -30,22 +34,19 @@ from store_oauth_authorization_server_code_pkce import (
     store_oauth_authorization_server_code_pkce_cleanup,
     store_oauth_authorization_server_code_pkce_init,
 )
-from store_oauth_authorization_server_codes import (
-    store_oauth_authorization_server_codes_cleanup,
-    store_oauth_authorization_server_codes_init,
+from store_oauth_authorization_server_code_pkce_request import (
+    store_oauth_authorization_server_code_pkce_request_cleanup,
+    store_oauth_authorization_server_code_pkce_request_init,
 )
 from store_oauth_authorization_server_keys_current import (
     store_oauth_authorization_server_keys_current_cleanup,
     store_oauth_authorization_server_keys_current_init,
 )
-from store_oauth_authorization_server_session import (
-    store_oauth_authorization_server_session_cleanup,
-    store_oauth_authorization_server_session_init,
-)
 from store_oauth_code_pkce_code_verifier import (
     store_oauth_code_pkce_code_verifier_cleanup,
     store_oauth_code_pkce_code_verifier_init,
 )
+from store_session import store_session_cleanup, store_session_init
 from store_webhook_provider_keys_current import (
     store_webhook_provider_keys_current_cleanup,
     store_webhook_provider_keys_current_init,
@@ -67,18 +68,18 @@ def home(http):
 
 helper_hooks.hooks = {
     "init": [
-        store_oauth_authorization_server_codes_init,
+        store_oauth_authorization_server_code_pkce_request_init,
         store_oauth_authorization_server_keys_current_init,
-        store_oauth_authorization_server_session_init,
+        store_session_init,
         store_webhook_provider_keys_current_init,
         store_oauth_code_pkce_code_verifier_init,
         store_oauth_authorization_server_client_credentials_init,
         store_oauth_authorization_server_code_pkce_init,
     ],
     "cleanup": [
-        store_oauth_authorization_server_codes_cleanup,
+        store_oauth_authorization_server_code_pkce_request_cleanup,
         store_oauth_authorization_server_keys_current_cleanup,
-        store_oauth_authorization_server_session_cleanup,
+        store_session_cleanup,
         store_webhook_provider_keys_current_cleanup,
         store_oauth_code_pkce_code_verifier_cleanup,
         store_oauth_authorization_server_client_credentials_cleanup,
@@ -98,8 +99,10 @@ helper_hooks.hooks = {
         "/oauth-code-pkce/login": route_oauth_code_pkce_login,
         "/oauth-code-pkce/callback": route_oauth_code_pkce_callback,
         "/oauth/authorize": route_oauth_authorization_server_authorize,
-        "/oauth/login": route_oauth_authorization_server_login,
-        "/oauth/consent": route_oauth_authorization_server_consent,
+        "/oauth/login": plugin_oauth_test_route_oauth_authorization_server_login,
+        "/oauth/consent": plugin_oauth_test_route_oauth_authorization_server_consent,
         "/oauth/token": route_oauth_authorization_server_token,
     },
+    "oauth_code_pkce_on_success": plugin_oauth_test_hook_oauth_code_pkce_on_success,
+    "oauth_authorization_server_on_authorize_when_not_signed_in": plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
 }

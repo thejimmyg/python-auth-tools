@@ -37,7 +37,7 @@ That `hooks_` module name is then passed to one of the `cli_*.py` files on the c
 
 Behind the scenes, each of the modules that can use your hooks will do so by looking them up in `helper_hooks.hooks`.
 
-The only example of this is the `hooks_test.py` file which is used to run a server that combines an OAuth 2 Authorization Server, Clients, Resource Owners as well as Login, consen (albeit automatically granted) and SAML2 flows as part of the test suite.
+The only example of this is the `app_test.py` file which is used to run a server that combines an OAuth 2 Authorization Server, Clients, Resource Owners as well as Login, consen (albeit automatically granted) and SAML2 flows as part of the test suite.
 
 
 ## Install
@@ -66,9 +66,13 @@ STORE_DIR='./store'
 * init
 * cleanup
 * routes
-* extension_points
+* \*\*hooks
 
 XXX More documentation needed here.
+
+* app
+* plugin
+* hook
 
 ## Run
 
@@ -79,14 +83,14 @@ source .venv/bin/activate
 ```
 
 ```sh
-python3 cli_oauth_authorization_server_client_credentials_put.py hooks_test client secret read
-python3 cli_oauth_authorization_server_code_pkce_put.py hooks_test client http://localhost:16001/oauth-code-pkce/callback read
-python3 cli_oauth_authorization_server_keys_generate.py hooks_test test
-python3 cli_oauth_authorization_server_keys_current_set.py hooks_test test
+python3 cli_oauth_authorization_server_client_credentials_put.py app_test client secret read
+python3 cli_oauth_authorization_server_code_pkce_put.py app_test client http://localhost:16001/oauth-code-pkce/callback read
+python3 cli_oauth_authorization_server_keys_generate.py app_test test
+python3 cli_oauth_authorization_server_keys_current_set.py app_test test
 ```
 
 ```sh
-python3 cli_serve_gevent.py hooks_test
+python3 cli_serve_gevent.py app_test
 ```
 
 In the second terminal:
@@ -96,21 +100,21 @@ source .venv/bin/activate
 ```
 
 ```sh
-export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py hooks_test client sub "read" test` && echo $TOKEN
-python3 cli_oauth_resource_owner_verify_jwt.py hooks_test "$TOKEN"
+export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py app_test client sub "read" test` && echo $TOKEN
+python3 cli_oauth_resource_owner_verify_jwt.py app_test "$TOKEN"
 curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```
 
 ```sh
-python3 cli_webhook_provider_keys_generate.py hooks_test test
-python3 cli_webhook_provider_keys_current_set.py hooks_test test
+python3 cli_webhook_provider_keys_generate.py app_test test
+python3 cli_webhook_provider_keys_current_set.py app_test test
 export PAYLOAD='{"hello": "world"}'
-export SIG=`python3 cli_webhook_provider_sign_jwt.py hooks_test "$PAYLOAD" test` && echo $SIG
-python3 cli_webhook_consumer_verify_jwt.py hooks_test "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-provider-jwks.json"
+export SIG=`python3 cli_webhook_provider_sign_jwt.py app_test "$PAYLOAD" test` && echo $SIG
+python3 cli_webhook_consumer_verify_jwt.py app_test "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-provider-jwks.json"
 ```
 
 ```sh
-python3 cli_oauth_client_credentials.py hooks_test client secret read
+python3 cli_oauth_client_credentials.py app_test client secret read
 ```
 
 ## Test
@@ -332,6 +336,8 @@ sequenceDiagram
 ```
 
 Is it OK to use the state as the key for the code verifier in the client server? I think it is.
+
+The token exchange doesn't check the sub matches the login session. If you have obtained the code, you can exchange it.
 
 ## OAuth Client Credentials Flow
 

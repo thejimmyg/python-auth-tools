@@ -4,11 +4,11 @@
 /chromedriver
 /store/oauth_authorization_server/client_credentials.db
 /store/oauth_authorization_server/code_pkce.db
-/store/oauth_authorization_server/codes.db
+/store/oauth_authorization_server/code_pkce_request.db
 /store/oauth_authorization_server/keys.db
 /store/oauth_authorization_server/private_keys/
-/store/oauth_authorization_server/sessions.db
-/store/oauth_code_pkce/code_verifiers.db
+/store/oauth_authorization_server/session.db
+/store/oauth_code_pkce/code_verifier.db
 /store/webhook_provider/keys.db
 /store/webhook_provider/private_keys/
 /test

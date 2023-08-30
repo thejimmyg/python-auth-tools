@@ -10,13 +10,10 @@ Steps:
 import json
 import urllib.parse
 
-from markupsafe import Markup
-
 import helper_hooks
 from config import config_url
 from helper_log import helper_log
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
-from render import render
 from store_oauth_code_pkce_code_verifier import (
     CodeVerifier,
     store_oauth_code_pkce_code_verifier_get_and_delete,
@@ -73,21 +70,7 @@ def route_oauth_code_pkce_callback(http):
         with urllib.request.urlopen(token_url) as fp:
             response = json.loads(fp.read())
             assert response["token_type"] == "bearer"
-
-            def on_success(http, response):
-                global log
-                access_token = response["access_token"]
-                helper_log(__file__, "Access token:", access_token)
-                http.response.body = render(
-                    title="Success!",
-                    body=Markup(
-                        """<p>Successfully logged in. Here's the access token: <span id="jwt">{access_token}</span></p>"""
-                    ).format(access_token=access_token),
-                )
-
-            helper_hooks.hooks.get("oauth_code_pkce_on_success", on_success)(
-                http, response
-            )
+            helper_hooks.hooks["oauth_code_pkce_on_success"](http, response)
     except urllib.error.HTTPError as e:
         helper_log(__file__, "ERROR:", e.read().decode())
         http.response.body = "Could not get access token."

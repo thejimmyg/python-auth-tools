@@ -11,36 +11,32 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
+from app_test import render_home
 from helper_oauth_resource_owner import helper_oauth_resource_owner_verify_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
-from hooks_test import render_home
 from render import render
 from render_oauth_resource_owner import render_oauth_resource_owner_home
 from render_saml_sp import render_saml_sp_success
-from store_oauth_authorization_server_codes import (
-    CodeValue,
-    store_oauth_authorization_server_codes_get_and_delete,
-    store_oauth_authorization_server_codes_put,
+from store_oauth_authorization_server_code_pkce_request import (
+    CodePkceRequest,
+    store_oauth_authorization_server_code_pkce_request_get_and_delete,
+    store_oauth_authorization_server_code_pkce_request_put,
 )
-from store_oauth_authorization_server_session import (
-    SessionValue,
-    store_oauth_authorization_server_session_get,
-    store_oauth_authorization_server_session_put,
-)
+from store_session import Session, store_session_get, store_session_put
 
 
 def test_store():
-    # store_oauth_authorization_server_codes
+    # store_oauth_authorization_server_code_pkce_request
     code_challenge = helper_pkce_code_challenge(helper_pkce_code_verifier())
-    store_oauth_authorization_server_codes_put(
+    store_oauth_authorization_server_code_pkce_request_put(
         "123",
-        CodeValue(
+        CodePkceRequest(
             client_id="client_id",
             code_challenge=code_challenge,
         ),
     )
-    v = store_oauth_authorization_server_codes_get_and_delete("123")
-    assert v == CodeValue(
+    v = store_oauth_authorization_server_code_pkce_request_get_and_delete("123")
+    assert v == CodePkceRequest(
         client_id="client_id",
         code_challenge=code_challenge,
         scopes=None,
@@ -48,16 +44,14 @@ def test_store():
         sub=None,
     ), v
 
-    # store_oauth_authorization_server_session
+    # store_session
     code = helper_pkce_code_challenge(helper_pkce_code_verifier())
-    store_oauth_authorization_server_session_put(
+    store_session_put(
         "123",
-        SessionValue(
-            code=code,
-        ),
+        Session(value=dict(code=code)),
     )
-    v = store_oauth_authorization_server_session_get("123")
-    assert v == SessionValue(code=code), v
+    v = store_session_get("123")
+    assert v == Session(value=dict(code=code)), v
 
     # store_oauth_code_pkce_code_verifier
     # XXX
@@ -268,7 +262,7 @@ def exec_cli_oauth_authorization_server_code_pkce_put(env, url):
         [
             "python3",
             "cli_oauth_authorization_server_code_pkce_put.py",
-            "hooks_test",
+            "app_test",
             "client",
             url + "/oauth-code-pkce/callback",
             "read",
@@ -285,7 +279,7 @@ def exec_cli_oauth_authorization_server_client_credentials_put(env):
         [
             "python3",
             "cli_oauth_authorization_server_client_credentials_put.py",
-            "hooks_test",
+            "app_test",
             "client",
             "secret",
             "read",
@@ -302,7 +296,7 @@ def exec_cli_oauth_authorization_server_keys_generate(env, kid):
         [
             "python3",
             "cli_oauth_authorization_server_keys_generate.py",
-            "hooks_test",
+            "app_test",
             kid,
         ],
         env=env,
@@ -317,7 +311,7 @@ def exec_cli_oauth_authorization_server_keys_current_set(env, kid):
         [
             "python3",
             "cli_oauth_authorization_server_keys_current_set.py",
-            "hooks_test",
+            "app_test",
             kid,
         ],
         env=env,
@@ -329,7 +323,7 @@ def exec_cli_webhook_provider_keys_generate(env, kid):
     print()
     print("Webhook provider generate keys")
     process = subprocess.Popen(
-        ["python3", "cli_webhook_provider_keys_generate.py", "hooks_test", kid], env=env
+        ["python3", "cli_webhook_provider_keys_generate.py", "app_test", kid], env=env
     )
     assert process.wait() == 0
 
@@ -338,7 +332,7 @@ def exec_cli_webhook_provider_keys_current_set(env, kid):
     print()
     print("Webhook provider set current key")
     process = subprocess.Popen(
-        ["python3", "cli_webhook_provider_keys_current_set.py", "hooks_test", kid],
+        ["python3", "cli_webhook_provider_keys_current_set.py", "app_test", kid],
         env=env,
     )
     assert process.wait() == 0
@@ -348,7 +342,7 @@ def exec_cli_webhook_provider_sign_jwt(env, payload, kid):
     print()
     print("Webhook provider sign JWT")
     process = subprocess.Popen(
-        ["python3", "cli_webhook_provider_sign_jwt.py", "hooks_test", payload, kid],
+        ["python3", "cli_webhook_provider_sign_jwt.py", "app_test", payload, kid],
         stdout=subprocess.PIPE,
         env=env,
     )
@@ -366,7 +360,7 @@ def exec_cli_webhook_consumer_verify_jwt(env, sig, body, jwks_url):
         [
             "python3",
             "cli_webhook_consumer_verify_jwt.py",
-            "hooks_test",
+            "app_test",
             sig,
             body,
             jwks_url,
@@ -386,7 +380,7 @@ def exec_cli_oauth_authorization_server_sign_jwt(env, kid):
         [
             "python3",
             "cli_oauth_authorization_server_sign_jwt.py",
-            "hooks_test",
+            "app_test",
             "client",
             "sub",
             "read",
@@ -409,7 +403,7 @@ def exec_cli_oauth_client_credentials(env, client, secret, scopes):
         [
             "python3",
             "cli_oauth_client_credentials.py",
-            "hooks_test",
+            "app_test",
             client,
             secret,
             " ".join(scopes),
@@ -432,7 +426,7 @@ def exec_cli_oauth_resource_owner_verify_jwt(env, token):
     print()
     print("OAuth resource owner verify JWT", token)
     process = subprocess.Popen(
-        ["python3", "cli_oauth_resource_owner_verify_jwt.py", "hooks_test", token],
+        ["python3", "cli_oauth_resource_owner_verify_jwt.py", "app_test", token],
         stdout=subprocess.PIPE,
         env=env,
     )
@@ -444,7 +438,7 @@ def exec_cli_oauth_resource_owner_verify_jwt(env, token):
 if __name__ == "__main__":
     from helper_hooks import helper_hooks_setup
 
-    helper_hooks_setup("hooks_test")
+    helper_hooks_setup("app_test")
 
     # Unit tests
     test_render()
@@ -496,7 +490,7 @@ if __name__ == "__main__":
         log = open(log_path, "wb")
         p = subprocess.Popen(
             # Have to run Python in unbuffered mode (-u) to get the logs streaming to the log files
-            ["python3", "-u", "cli_serve_gevent.py", "hooks_test"],
+            ["python3", "-u", "cli_serve_gevent.py", "app_test"],
             env=env,
             stdout=log,
             stderr=log,

@@ -1,18 +1,15 @@
 import base64
 import urllib.parse
 
-from markupsafe import Markup
-
+import helper_hooks
 from config import config_url
 from config_oauth_authorization_server import (
     config_oauth_authorization_server_jwks_json_path,
 )
 from helper_log import helper_log
-from helper_meta_refresh import helper_meta_refresh_html
 from helper_oauth_authorization_server import helper_oauth_authorization_server_sign_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
-from http_session import http_session_create, http_session_get_id
-from render import render
+from http_session import http_session_get_id
 from route_oauth_resource_owner_api import apis
 from route_static import route_static
 from store_oauth_authorization_server_client_credentials import (
@@ -21,21 +18,15 @@ from store_oauth_authorization_server_client_credentials import (
 from store_oauth_authorization_server_code_pkce import (
     store_oauth_authorization_server_code_pkce_get,
 )
-from store_oauth_authorization_server_codes import (
-    CodeValue,
-    get_code_value,
-    store_oauth_authorization_server_codes_get_and_delete,
-    store_oauth_authorization_server_codes_put,
-    store_oauth_authorization_server_codes_set_sub,
+from store_oauth_authorization_server_code_pkce_request import (
+    CodePkceRequest,
+    store_oauth_authorization_server_code_pkce_request_get_and_delete,
+    store_oauth_authorization_server_code_pkce_request_put,
 )
 from store_oauth_authorization_server_keys_current import (
     store_oauth_authorization_server_keys_current_get_and_cache,
 )
-from store_oauth_authorization_server_session import (
-    SessionValue,
-    store_oauth_authorization_server_session_get,
-    store_oauth_authorization_server_session_put,
-)
+from store_session import store_session_get
 
 available_scopes = []
 for api in apis:
@@ -45,10 +36,10 @@ for api in apis:
 helper_log(__file__, "Available scopes:", available_scopes)
 
 
-def _make_url(code, code_value, redirect_uri):
+def _make_url(code, code_pkce_request, redirect_uri):
     url = redirect_uri + "?"
-    if code_value.state:
-        url += "state=" + urllib.parse.quote(code_value.state)
+    if code_pkce_request.state:
+        url += "state=" + urllib.parse.quote(code_pkce_request.state)
         url += "&code=" + urllib.parse.quote(code)
     else:
         url += "code=" + urllib.parse.quote(code)
@@ -105,84 +96,42 @@ def route_oauth_authorization_server_authorize(http):
     if "state" in q:
         assert len(q["state"]) == 1
         state = q["state"][0]
-    session_id = http_session_get_id(http, "oauth")
-    logged_in = False
-    approved_scopes = False
-    sub = None
-    if session_id:
-        logged_in = True
-        approved_scopes = True
-        sub = "sub2"
     new_code = helper_pkce_code_verifier()
-    code_value = CodeValue(
-        client_id=client_id,
-        code_challenge=q["code_challenge"][0],
-        scopes=scopes,
-        state=state,
-        sub=sub,
-    )
-    store_oauth_authorization_server_codes_put(new_code, code_value)
-    if logged_in and approved_scopes:
-        # We know the sub, so we can issue the code
-        url = _make_url(new_code, code_value, client.redirect_uri)
-        http.response.status = "302 Redirect"
-        http.response.headers["location"] = url
-        http.response.body = "Redirecting ..."
-    else:
-        # At this point we need some sort of session so that we can handle login interactions and then update the claims with the sub (and anything else)
-        session_id = http_session_create(http, "oauth")
-        store_oauth_authorization_server_session_put(
-            session_id, SessionValue(code=new_code)
-        )
-        http.response.body = helper_meta_refresh_html("/oauth/login")
-
-
-def route_oauth_authorization_server_login(http):
     session_id = http_session_get_id(http, "oauth")
-    if not session_id:
-        return
-    sub = ""
-    if http.request.method == "post":
-        form = urllib.parse.parse_qs(
-            http.request.body.decode("utf8"),
-            keep_blank_values=False,
-            strict_parsing=True,
-            encoding="utf-8",
-            max_num_fields=10,
-            separator="&",
+    if session_id:
+        session = store_session_get(session_id)
+        sub = session["sub"]
+        assert sub
+        code_pkce_request = CodePkceRequest(
+            client_id=client_id,
+            code_challenge=q["code_challenge"][0],
+            scopes=scopes,
+            state=state,
+            sub=sub,  # Can be None to start with, it should be updated later if it is.
         )
-        subs = form.get("sub", [])
-        if len(subs) == 1:
-            sub = subs[0]
-    if http.request.method == "get" or not sub:
-        form = Markup(
-            """
-            <form method="post">
-                <input type="text" name="sub" placeholder="sub" value="{sub}">
-                <input type="submit">
-            </form>
-            <p>Session ID is: {session_id}"""
-        ).format(session_id=session_id, sub=sub)
-        http.response.body = render(title="Login", body=form)
-    else:
-        session = store_oauth_authorization_server_session_get(session_id)
-        store_oauth_authorization_server_codes_set_sub(session.code, sub)
-        # XXX This should actually lookup consent, and if needed redirect to the consent screen
-        code_value = get_code_value(session.code)
-        url = _make_url(
-            session.code,
-            code_value,
-            store_oauth_authorization_server_code_pkce_get(
-                code_value.client_id
-            ).redirect_uri,
+        store_oauth_authorization_server_code_pkce_request_put(
+            new_code, code_pkce_request
         )
+        # We know the sub, so we can issue the code
+        url = _make_url(new_code, code_pkce_request, client.redirect_uri)
         http.response.status = "302 Redirect"
         http.response.headers["location"] = url
         http.response.body = "Redirecting ..."
-
-
-def route_oauth_authorization_server_consent(http):
-    http.response.body = render(title="Not yet", body="Need to ask for consent here.")
+    else:
+        code_pkce_request = CodePkceRequest(
+            client_id=client_id,
+            code_challenge=q["code_challenge"][0],
+            scopes=scopes,
+            state=state,
+            sub=None,
+        )
+        store_oauth_authorization_server_code_pkce_request_put(
+            new_code, code_pkce_request
+        )
+        # Start a login flow
+        helper_hooks.hooks[
+            "oauth_authorization_server_on_authorize_when_not_signed_in"
+        ](http, new_code)
 
 
 def route_oauth_authorization_server_token(http):
@@ -197,7 +146,6 @@ def route_oauth_authorization_server_token(http):
     http.response.headers["content-type"] = "application/json;charset=UTF-8"
     http.response.headers["cache-control"] = "no-store"
     http.response.headers["pragma"] = "no-cache"
-
     q = urllib.parse.parse_qs(
         http.request.query,
         keep_blank_values=False,
@@ -251,19 +199,21 @@ def route_oauth_authorization_server_token(http):
         assert len(q["code_verifier"]) == 1
         code = q["code"][0]
         code_verifier = q["code_verifier"][0]
-        code_value = store_oauth_authorization_server_codes_get_and_delete(code)
-        if code_value.sub is None or code_value.scopes is None:
+        code_pkce_request = (
+            store_oauth_authorization_server_code_pkce_request_get_and_delete(code)
+        )
+        if code_pkce_request.sub is None or code_pkce_request.scopes is None:
             raise Exception("Not completed auth flow before trying to get token")
-        client_id = code_value.client_id
-        code_challenge = code_value.code_challenge
-        scopes = code_value.scopes
-        sub = code_value.sub
+        client_id = code_pkce_request.client_id
+        code_challenge = code_pkce_request.code_challenge
+        scopes = code_pkce_request.scopes
+        sub = code_pkce_request.sub
         helper_log(
             __file__,
             "Authorize code params:",
             code,
             code_verifier,
-            code_value.client_id,
+            code_pkce_request.client_id,
             code_challenge,
             sub,
         )
