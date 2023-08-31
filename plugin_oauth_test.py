@@ -28,7 +28,6 @@ from store_session import (
 
 
 def plugin_oauth_test_hook_oauth_code_pkce_on_success(http, response):
-    global log
     access_token = response["access_token"]
     helper_log(__file__, "Access token:", access_token)
     http.response.body = render(
@@ -70,6 +69,7 @@ def plugin_oauth_test_route_oauth_authorization_server_login(http):
         if len(subs) == 1:
             sub = subs[0]
     if http.request.method == "get" or not sub:
+        # Note we don't really need a CSRF check here because a username and password would really be used to authenticate the request
         form = Markup(
             """
             <form method="post">
@@ -98,15 +98,22 @@ def plugin_oauth_test_route_oauth_authorization_server_consent(http):
         http.response.body = "401 Not Authenticated"
         return
     session = store_session_get(session_id)
-    code_pkce_request = store_oauth_authorization_code_pkce_request_get(
-        session.value["code"]
-    )
+    try:
+        code_pkce_request = store_oauth_authorization_code_pkce_request_get(
+            session.value["code"]
+        )
+        code_pkce = store_oauth_authorization_server_code_pkce_get(
+            code_pkce_request.client_id
+        )
+    except Exception as e:
+        helper_log(__file__, e)
+        http.response.body = "OAuth flow has expired. Please try again."
+        return
+
     url = helper_oauth_authorization_server_prepare_redirect_uri(
         session.value["code"],
         code_pkce_request,
-        store_oauth_authorization_server_code_pkce_get(
-            code_pkce_request.client_id
-        ).redirect_uri,
+        code_pkce.redirect_uri,
     )
     if not code_pkce_request.scopes:
         http.response.body = helper_meta_refresh_html(url)
@@ -127,8 +134,54 @@ def plugin_oauth_test_route_oauth_authorization_server_consent(http):
             __file__,
             f"No code PKCE consent for {session.sub} {code_pkce_request.client_id}",
         )
-        http.response.body = render(
-            title="Not yet",
-            body=Markup('<span id="consent-msg">Need to ask for consent here.</span>'),
-        )
-        return
+        if http.request.method == "post":
+            body = http.request.body.decode("utf8")
+            form = urllib.parse.parse_qs(
+                body,
+                keep_blank_values=False,
+                strict_parsing=True,
+                encoding="utf-8",
+                max_num_fields=10,
+                separator="&",
+            )
+            csrfs = form.get("csrf", [])
+            assert len(csrfs) == 1
+            if csrfs[0] != session.csrf:
+                raise Exception("CSRF check failed")
+            approves = form.get("approve", [])
+            if len(approves) == 1 and approves[0] == "Approve":
+                helper_log(__file__, "We've approved the request")
+                http.response.body = helper_meta_refresh_html(url)
+                return
+            else:
+                helper_log(
+                    __file__, "We've rejected the request or done something strange"
+                )
+                del session.value["code"]
+                store_session_put(session_id, session)
+                http.response.body = "Rejected!"
+                return
+        else:
+            http.response.body = render(
+                title="Permissions Consent",
+                body=Markup(
+                    """
+                <p id="consent-msg">The page at {redirect_uri} is asking for the following permissions to your data:</p>
+
+                {permissions}
+
+                <form method="POST" action="">
+                  <input type="hidden" name="csrf" value="{csrf}">
+                  <input type="submit" name="approve" value="Approve">
+                  <input type="submit" name="reject" value="Reject">
+                </form>
+                """.format(
+                        redirect_uri=code_pkce.redirect_uri,
+                        csrf=session.csrf,
+                        permissions=Markup("<ul><li>")
+                        + Markup("</li><li>").join(code_pkce_request.scopes)
+                        + Markup("</li></ul>"),
+                    )
+                ),
+            )
+            return

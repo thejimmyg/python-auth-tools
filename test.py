@@ -160,9 +160,25 @@ def _login_as(driver, test_sub):
     elem.send_keys(Keys.RETURN)
 
 
+def _check_jwt(now, url, test_sub):
+    elem = driver.find_element(By.ID, "jwt")
+    jwt = elem.text
+    claims = helper_oauth_resource_owner_verify_jwt(jwt)
+    assert claims["aud"] == "client"
+    assert claims["exp"] > now and claims["exp"] <= now + 600 + wiggle_room
+    assert claims["iat"] >= now and claims["iat"] <= now + wiggle_room, (
+        claims["iat"],
+        now,
+        now + wiggle_room,
+    )
+    assert claims["iss"] == url
+    assert claims["sub"] == test_sub
+    return jwt, claims
+
+
 def oauth_code_pkce_browser(driver, url):
     print()
-    print("Browser test", url)
+    print("Browser test code pkce", url)
     driver.get(url + "/")
     assert "OAuth Client Home" in driver.title
     elem = driver.find_element(By.LINK_TEXT, "Login without scopes")
@@ -172,28 +188,14 @@ def oauth_code_pkce_browser(driver, url):
     test_sub = "test_sub_{}".format(now)
     _login_as(driver, test_sub)
 
-    elem = driver.find_element(By.ID, "jwt")
-    jwt = elem.text
-    claims = helper_oauth_resource_owner_verify_jwt(jwt)
-    # print(oidc)
-    # assert oidc['issuer'] == url
-    # assert oidc['authorization_endpoint'] = url + '/oauth/authorize',
-    # assert oidc['token_endpoint'] =  url+'/oauth/token', 'jwks_uri': url + '/.well-known/jwks.json', 'grant_types_supported': ['authorization_code', 'client_credentials'], 'token_endpoint_auth_methods_supported': ['client_secret_basic'], 'scopes_supported': ['openid', 'profile'], 'code_challenge_methods_supported': ['S256']}
-    assert claims["aud"] == "client"
-    assert claims["exp"] > now and claims["exp"] <= now + 600 + wiggle_room
-    assert claims["iat"] >= now and claims["iat"] <= now + wiggle_room, (
-        claims["iat"],
-        now,
-    )
-    assert claims["iss"] == url
-    assert claims["sub"] == test_sub
+    jwt, claims = _check_jwt(now, url, test_sub)
     assert "scope" not in claims
     return jwt, claims, test_sub
 
 
 def oauth_code_pkce_browser_read_scope(driver, url):
     print()
-    print("Browser test", url)
+    print("Browser test code pkce read scope", url)
     driver.get(url + "/")
     assert "OAuth Client Home" in driver.title
     elem = driver.find_element(By.LINK_TEXT, "login with read scope")
@@ -204,36 +206,31 @@ def oauth_code_pkce_browser_read_scope(driver, url):
     _login_as(driver, test_sub)
 
     elem = driver.find_element(By.ID, "consent-msg")
-    assert elem.text == "Need to ask for consent here."
+    assert (
+        elem.text
+        == "The page at {url}/oauth-code-pkce/callback is asking for the following permissions to your data:".format(
+            url=url
+        )
+    ), elem.text
+    elem = driver.find_element(By.NAME, "approve")
+    elem.click()
+    return _check_jwt(now, url, test_sub)
 
 
 def oauth_code_pkce_browser_already_logged_in(driver, url, test_sub):
     print()
-    print("Browser test when already logged in", url)
+    print("Browser test code pkce when already logged in", url)
     now = math.floor(time.time())  # Round down
     driver.get(url + "/")
     assert "OAuth Client Home" in driver.title
     elem = driver.find_element(By.LINK_TEXT, "Login without scopes")
     elem.click()
-    elem = driver.find_element(By.ID, "jwt")
-    jwt = elem.text
-    claims = helper_oauth_resource_owner_verify_jwt(jwt)
-    assert claims["aud"] == "client"
-    assert claims["exp"] > now and claims["exp"] <= now + 600 + wiggle_room
-    assert claims["iat"] >= now and claims["iat"] <= now + wiggle_room, (
-        "HEY! What is going on!",
-        claims["iat"],
-        now,
-        now + wiggle_room,
-    )
-    assert claims["iss"] == url
-    assert claims["sub"] == test_sub
-    return jwt, claims
+    return _check_jwt(now, url, test_sub)
 
 
 def oauth_code_pkce_browser_already_logged_in_read_scope(driver, url, test_sub):
     print()
-    print("Browser test when already logged in", url)
+    print("Browser test code pkce when already logged in read scope", url)
     now = math.floor(time.time())  # Round down
     driver.get(url + "/")
     assert "OAuth Client Home" in driver.title
@@ -244,12 +241,20 @@ def oauth_code_pkce_browser_already_logged_in_read_scope(driver, url, test_sub):
     "test_sub_{}".format(now)
 
     elem = driver.find_element(By.ID, "consent-msg")
-    assert elem.text == "Need to ask for consent here."
+    assert (
+        elem.text
+        == "The page at {url}/oauth-code-pkce/callback is asking for the following permissions to your data:".format(
+            url=url
+        )
+    ), elem.text
+    elem = driver.find_element(By.NAME, "approve")
+    elem.click()
+    return _check_jwt(now, url, test_sub)
 
 
 def oauth_code_pkce_browser_invalid_scope(driver, url):
     print()
-    print("Browser test when already logged in", url)
+    print("Browser test code pkce invalid scope", url)
     now = math.floor(time.time())  # Round down
     driver.get(url + "/")
     assert "OAuth Client Home" in driver.title

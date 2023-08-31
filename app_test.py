@@ -71,7 +71,7 @@ def route_home(http):
     http.response.body = render_home(title="OAuth Client Home")
 
 
-helper_hooks.hooks = {
+hooks = helper_hooks.hooks = {
     "init": [
         store_oauth_authorization_server_code_pkce_request_init,
         store_oauth_authorization_server_keys_current_init,
