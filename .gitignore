@@ -2,6 +2,7 @@
 /.venv
 /__pycache__
 /chromedriver
+/store/driver_key_value_store/sqlite.db
 /store/oauth_authorization_server/client_credentials.db
 /store/oauth_authorization_server/code_pkce_consent.db
 /store/oauth_authorization_server/code_pkce.db

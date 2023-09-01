@@ -1,6 +1,10 @@
 from markupsafe import Markup
 
 import helper_hooks
+from driver_key_value_store_sqlite import (
+    driver_key_value_store_sqlite_cleanup,
+    driver_key_value_store_sqlite_init,
+)
 from plugin_oauth_test import (
     plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
     plugin_oauth_test_hook_oauth_code_pkce_on_success,
@@ -73,6 +77,7 @@ def route_home(http):
 
 hooks = helper_hooks.hooks = {
     "init": [
+        driver_key_value_store_sqlite_init,
         store_oauth_authorization_server_code_pkce_request_init,
         store_oauth_authorization_server_keys_current_init,
         store_session_init,
@@ -83,6 +88,7 @@ hooks = helper_hooks.hooks = {
         store_oauth_authorization_server_code_pkce_consent_init,
     ],
     "cleanup": [
+        driver_key_value_store_sqlite_cleanup,
         store_oauth_authorization_server_code_pkce_request_cleanup,
         store_oauth_authorization_server_keys_current_cleanup,
         store_session_cleanup,
