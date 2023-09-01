@@ -3,6 +3,7 @@ import math
 import os
 import random
 import subprocess
+import sys
 import threading
 import time
 import urllib.request
@@ -24,7 +25,9 @@ from store_oauth_authorization_server_code_pkce_request import (
 )
 from store_session import Session, store_session_get, store_session_put
 
-wiggle_room = 2
+WIGGLE_ROOM = 2
+# CLI_SERVE_FILE = "cli_serve_gevent.py"
+CLI_SERVE_FILE = sys.argv[1]
 
 
 def test_store():
@@ -165,11 +168,11 @@ def _check_jwt(now, url, test_sub):
     jwt = elem.text
     claims = helper_oauth_resource_owner_verify_jwt(jwt)
     assert claims["aud"] == "client"
-    assert claims["exp"] > now and claims["exp"] <= now + 600 + wiggle_room
-    assert claims["iat"] >= now and claims["iat"] <= now + wiggle_room, (
+    assert claims["exp"] > now and claims["exp"] <= now + 600 + WIGGLE_ROOM
+    assert claims["iat"] >= now and claims["iat"] <= now + WIGGLE_ROOM, (
         claims["iat"],
         now,
-        now + wiggle_room,
+        now + WIGGLE_ROOM,
     )
     assert claims["iss"] == url
     assert claims["sub"] == test_sub
@@ -576,7 +579,7 @@ if __name__ == "__main__":
         log = open(log_path, "wb")
         p = subprocess.Popen(
             # Have to run Python in unbuffered mode (-u) to get the logs streaming to the log files
-            ["python3", "-u", "cli_serve_gevent.py", "app_test"],
+            ["python3", "-u", CLI_SERVE_FILE, "app_test"],
             env=env,
             stdout=log,
             stderr=log,

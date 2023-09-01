@@ -1,11 +1,14 @@
 import dbm
 import json
+from threading import RLock
 
 from pydantic import BaseModel
 
 from config_oauth_authorization_server import (
     config_oauth_authorization_server_client_credentials_db_path,
 )
+
+rlock = RLock()
 
 
 class ClientCredentials(BaseModel):
@@ -28,8 +31,12 @@ def store_oauth_authorization_server_client_credentials_cleanup():
 def store_oauth_authorization_server_client_credentials_put(
     client: str, client_credentials: ClientCredentials
 ):
-    _db[client.encode("utf8")] = json.dumps(dict(client_credentials)).encode("utf8")
+    with rlock:
+        _db[client.encode("utf8")] = json.dumps(dict(client_credentials)).encode("utf8")
 
 
 def store_oauth_authorization_server_client_credentials_get(client: str):
-    return ClientCredentials(**json.loads(_db[client.encode("utf8")].decode("utf8")))
+    with rlock:
+        return ClientCredentials(
+            **json.loads(_db[client.encode("utf8")].decode("utf8"))
+        )

@@ -1,5 +1,6 @@
 import dbm
 import json
+from threading import RLock
 
 from pydantic import BaseModel
 
@@ -7,6 +8,8 @@ from config_oauth_authorization_server import (
     config_oauth_authorization_server_session_db_path,
 )
 from helper_pkce import helper_pkce_code_verifier
+
+rlock = RLock()
 
 
 class Session(BaseModel):
@@ -28,24 +31,28 @@ def store_session_cleanup():
 
 
 def store_session_put(session_id: str, session: Session):
-    assert session_id
-    if session.csrf is None:
-        session.csrf = helper_pkce_code_verifier()
-    _db[session_id.encode("utf8")] = json.dumps(dict(session)).encode("utf8")
+    with rlock:
+        assert session_id
+        if session.csrf is None:
+            session.csrf = helper_pkce_code_verifier()
+        _db[session_id.encode("utf8")] = json.dumps(dict(session)).encode("utf8")
 
 
 def store_session_get(session_id: str):
-    assert session_id
-    return Session(**json.loads(_db[session_id.encode("utf8")].decode("utf8")))
+    with rlock:
+        assert session_id
+        return Session(**json.loads(_db[session_id.encode("utf8")].decode("utf8")))
 
 
 def store_session_destroy(session_id: str):
-    assert session_id
-    del _db[session_id.encode("utf8")]
+    with rlock:
+        assert session_id
+        del _db[session_id.encode("utf8")]
 
 
 def store_session_set_sub(session_id: str, sub: str):
-    assert session_id
-    session = store_session_get(session_id)
-    session.sub = sub
-    store_session_put(session_id, session)
+    with rlock:
+        assert session_id
+        session = store_session_get(session_id)
+        session.sub = sub
+        store_session_put(session_id, session)

@@ -1,11 +1,14 @@
 import dbm
 import json
+from threading import RLock
 
 from pydantic import BaseModel
 
 from config_oauth_authorization_server import (
     config_oauth_authorization_server_code_pkce_db_path,
 )
+
+rlock = RLock()
 
 
 class CodePkce(BaseModel):
@@ -26,8 +29,10 @@ def store_oauth_authorization_server_code_pkce_cleanup():
 
 
 def store_oauth_authorization_server_code_pkce_put(client: str, code_pkce: CodePkce):
-    _db[client.encode("utf8")] = json.dumps(dict(code_pkce)).encode("utf8")
+    with rlock:
+        _db[client.encode("utf8")] = json.dumps(dict(code_pkce)).encode("utf8")
 
 
 def store_oauth_authorization_server_code_pkce_get(client: str):
-    return CodePkce(**json.loads(_db[client.encode("utf8")].decode("utf8")))
+    with rlock:
+        return CodePkce(**json.loads(_db[client.encode("utf8")].decode("utf8")))

@@ -26,7 +26,7 @@ I'd like this code to run in multiple very different environments like Raspberry
 * There are no directories for `.py` files. By keeping everything top level, everything can import everything else easily without the code needing to be installed as a package.
 * There aren't really any classes, they aren't needed. Instead each module is designed to be used once (singleton pattern) and so can store its state in module-level global variables. This means everything can be normal Python functions. The code does uses classes for data validation though. If you need to use the same component twice, make a copy of the files with a different name. The implementations will probably diverge over time anyway, so in the long term you'll reduce bugs.
 * There is a hooks system so that you can customise the behaviour of the existing code without needing classes/inheritance etc.
-* The code isn't threadsafe, instead it uses gevent for cooperative multitasking making it very efficient in a single process. You an safely run multiple processes at once on the same computer and round-robin proxy to each if you want to make the most of the available CPUs.
+* Some effort has been made to consider threadsafety, but really you are better off using gevent for cooperative multitasking making it very efficient in a single process. You should be able to safely run multiple processes using gevent at once on the same computer (assuming your dbd implementation is process-safe, which it may not be) and round-robin proxy to each if you want to make the most of the available CPUs.
 * All HTTP headers are lowercase. If you set or try to access anything not lowercase, it won't error, but the behaviour is undefined.
 
 ## Understanding Hooks
@@ -129,7 +129,8 @@ Then run (deleting your existing stores):
 
 ```sh
 sudo systemctl restart ntp
-rm -rf ./store ./test ./tmp && python3 test.py
+rm -rf ./store ./test ./tmp && python3 test.py cli_serve_gevent.py
+rm -rf ./store ./test ./tmp && python3 test.py cli_serve_wsgi.py
 ```
 
 On macOS you'll need a new version of ChromeDriver. You can fetch it like this:

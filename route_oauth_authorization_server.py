@@ -1,5 +1,6 @@
 import base64
 import urllib.parse
+from threading import RLock
 
 import helper_hooks
 from config import config_url
@@ -28,11 +29,15 @@ from store_oauth_authorization_server_keys_current import (
 )
 from store_session import store_session_get, store_session_put
 
-available_scopes = []
-for api in apis:
-    for required_scope in apis[api][1]:
-        if required_scope not in available_scopes:
-            available_scopes.append(required_scope)
+rlock = RLock()
+
+with rlock:
+    available_scopes = []
+    for api in apis:
+        for required_scope in apis[api][1]:
+            if required_scope not in available_scopes:
+                available_scopes.append(required_scope)
+
 helper_log(__file__, "Available scopes:", available_scopes)
 
 
@@ -62,6 +67,7 @@ def _get_scopes(q):
 
 
 def route_oauth_authorization_server_authorize(http):
+    # helper_log(__file__, http.request.query)
     q = urllib.parse.parse_qs(
         http.request.query,
         keep_blank_values=False,
@@ -74,7 +80,7 @@ def route_oauth_authorization_server_authorize(http):
     assert len(q["response_type"]) == 1
     assert q["response_type"][0] == "code", "response_type != code"
     assert len(q["code_challenge_method"]) == 1
-    assert q["code_challenge_method"][0] == "S256", "code_challenge != S256"
+    assert q["code_challenge_method"][0] == "S256", "code_challenge_method != S256"
     assert len(q["code_challenge"]) == 1
     assert len(q["client_id"]) == 1
     client_id = q["client_id"][0]
@@ -231,7 +237,8 @@ def route_oauth_authorization_server_token(http):
     }
 
 
-route_oauth_authorization_server_jwks_json = route_static(
-    config_oauth_authorization_server_jwks_json_path,
-    "application/json; charset=UTF8",
-)
+with rlock:
+    route_oauth_authorization_server_jwks_json = route_static(
+        config_oauth_authorization_server_jwks_json_path,
+        "application/json; charset=UTF8",
+    )

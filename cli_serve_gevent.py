@@ -19,7 +19,7 @@ if __name__ == "__main__":
         serve_gevent(helper_hooks.hooks["routes"]),
     )
     print(
-        "Starting echo server on {host}:{port}".format(
+        "Starting server on {host}:{port} using gevent".format(
             host=config_host, port=config_port
         )
     )
