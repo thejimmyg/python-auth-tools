@@ -31,35 +31,6 @@ from route_oauth_resource_owner_api import route_oauth_resource_owner_api_v1
 from route_saml_sp import route_saml_sp_acs, route_saml_sp_login
 from route_static import route_static
 from route_webhook_provider import route_webhook_provider_jwks_json
-from store_oauth_authorization_server_client_credentials import (
-    store_oauth_authorization_server_client_credentials_cleanup,
-    store_oauth_authorization_server_client_credentials_init,
-)
-from store_oauth_authorization_server_code_pkce import (
-    store_oauth_authorization_server_code_pkce_cleanup,
-    store_oauth_authorization_server_code_pkce_init,
-)
-from store_oauth_authorization_server_code_pkce_consent import (
-    store_oauth_authorization_server_code_pkce_consent_cleanup,
-    store_oauth_authorization_server_code_pkce_consent_init,
-)
-from store_oauth_authorization_server_code_pkce_request import (
-    store_oauth_authorization_server_code_pkce_request_cleanup,
-    store_oauth_authorization_server_code_pkce_request_init,
-)
-from store_oauth_authorization_server_keys_current import (
-    store_oauth_authorization_server_keys_current_cleanup,
-    store_oauth_authorization_server_keys_current_init,
-)
-from store_oauth_code_pkce_code_verifier import (
-    store_oauth_code_pkce_code_verifier_cleanup,
-    store_oauth_code_pkce_code_verifier_init,
-)
-from store_session import store_session_cleanup, store_session_init
-from store_webhook_provider_keys_current import (
-    store_webhook_provider_keys_current_cleanup,
-    store_webhook_provider_keys_current_init,
-)
 
 home_markup = Markup(
     """<p>
@@ -78,25 +49,9 @@ def route_home(http):
 hooks = helper_hooks.hooks = {
     "init": [
         driver_key_value_store_sqlite_init,
-        store_oauth_authorization_server_code_pkce_request_init,
-        store_oauth_authorization_server_keys_current_init,
-        store_session_init,
-        store_webhook_provider_keys_current_init,
-        store_oauth_code_pkce_code_verifier_init,
-        store_oauth_authorization_server_client_credentials_init,
-        store_oauth_authorization_server_code_pkce_init,
-        store_oauth_authorization_server_code_pkce_consent_init,
     ],
     "cleanup": [
         driver_key_value_store_sqlite_cleanup,
-        store_oauth_authorization_server_code_pkce_request_cleanup,
-        store_oauth_authorization_server_keys_current_cleanup,
-        store_session_cleanup,
-        store_webhook_provider_keys_current_cleanup,
-        store_oauth_code_pkce_code_verifier_cleanup,
-        store_oauth_authorization_server_client_credentials_cleanup,
-        store_oauth_authorization_server_code_pkce_cleanup,
-        store_oauth_authorization_server_code_pkce_consent_cleanup,
     ],
     "routes": {
         "/saml2/login/": route_saml_sp_login,
