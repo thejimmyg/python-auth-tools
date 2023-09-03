@@ -1,14 +1,8 @@
-from pydantic import BaseModel
-
+from data_oauth_authorization_server import CodePkceConsent
 from driver_key_value_store import (
     driver_key_value_store_get,
     driver_key_value_store_put,
 )
-
-
-class CodePkceConsent(BaseModel):
-    scopes: list[str] | None
-
 
 STORE = "oauth_authorization_server_code_pkce_consent"
 

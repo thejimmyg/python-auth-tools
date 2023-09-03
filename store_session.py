@@ -1,20 +1,12 @@
 import time
 
-from pydantic import BaseModel
-
+from data_session import Session
 from driver_key_value_store import (
     driver_key_value_store_del,
     driver_key_value_store_get,
     driver_key_value_store_put,
 )
 from helper_pkce import helper_pkce_code_verifier
-
-
-class Session(BaseModel):
-    value: dict
-    sub: str | None
-    csrf: str | None
-
 
 STORE = "session"
 

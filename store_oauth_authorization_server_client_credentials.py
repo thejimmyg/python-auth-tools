@@ -1,15 +1,8 @@
-from pydantic import BaseModel
-
+from data_oauth_authorization_server import ClientCredentials
 from driver_key_value_store import (
     driver_key_value_store_get,
     driver_key_value_store_put,
 )
-
-
-class ClientCredentials(BaseModel):
-    client_secret: str
-    scopes: list[str]
-
 
 STORE = "oauth_authorization_server_client_credentials"
 

@@ -1,17 +1,11 @@
 import time
 
-from pydantic import BaseModel
-
+from data_oauth_code_pkce import CodeVerifier
 from driver_key_value_store import (
     driver_key_value_store_del,
     driver_key_value_store_get,
     driver_key_value_store_put,
 )
-
-
-class CodeVerifier(BaseModel):
-    code_verifier: str
-
 
 STORE = "oauth_code_pkce_code_verifier"
 

@@ -1,21 +1,11 @@
 import time
 
-from pydantic import BaseModel
-
+from data_oauth_authorization_server import CodePkceRequest
 from driver_key_value_store import (
     driver_key_value_store_del,
     driver_key_value_store_get,
     driver_key_value_store_put,
 )
-
-
-class CodePkceRequest(BaseModel):
-    client_id: str
-    code_challenge: str
-    scopes: list[str] | None
-    state: str | None
-    sub: str | None
-
 
 STORE = "oauth_authorization_server_code_pkce_request"
 

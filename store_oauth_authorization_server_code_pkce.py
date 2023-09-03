@@ -1,15 +1,8 @@
-from pydantic import BaseModel
-
+from data_oauth_authorization_server import CodePkce
 from driver_key_value_store import (
     driver_key_value_store_get,
     driver_key_value_store_put,
 )
-
-
-class CodePkce(BaseModel):
-    redirect_uri: str
-    scopes: list[str]
-
 
 STORE = "oauth_authorization_server_code_pkce"
 
