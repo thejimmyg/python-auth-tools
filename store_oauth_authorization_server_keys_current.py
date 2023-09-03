@@ -3,7 +3,7 @@ from threading import RLock
 
 from cachetools import TTLCache, cached
 
-from driver_key_value_store_sqlite import (
+from driver_key_value_store import (
     driver_key_value_store_get,
     driver_key_value_store_put,
 )

@@ -9,7 +9,7 @@ current_kid_value_cache = TTLCache(
 )
 
 
-from driver_key_value_store_sqlite import (
+from driver_key_value_store import (
     driver_key_value_store_get,
     driver_key_value_store_put,
 )

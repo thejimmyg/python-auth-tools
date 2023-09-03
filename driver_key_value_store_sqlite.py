@@ -10,6 +10,7 @@ from threading import RLock
 
 from config_driver_key_value_store import config_driver_key_value_store_db_path
 
+# This might not be needed if we create a cursor within each function, but I don't know enough about the underlying implementation to be sure.
 rlock = RLock()
 
 
@@ -68,7 +69,7 @@ def _make_key(store, key):
     return store + " " + key
 
 
-def driver_key_value_store_put(store: str, key: str, value, ttl=None):
+def driver_key_value_store_sqlite_put(store: str, key: str, value, ttl=None):
     cols = ["pk", "ttl", "value"]
     pk = _make_key(store, key)
     values = [pk, ttl, json.dumps(dict(value))]
@@ -92,7 +93,7 @@ def driver_key_value_store_put(store: str, key: str, value, ttl=None):
         _conn.commit()
 
 
-def driver_key_value_store_del(store: str, key: str):
+def driver_key_value_store_sqlite_del(store: str, key: str):
     pk = _make_key(store, key)
 
     with rlock:
@@ -106,7 +107,7 @@ def driver_key_value_store_del(store: str, key: str):
         _conn.commit()
 
 
-def driver_key_value_store_get(store: str, key: str):
+def driver_key_value_store_sqlite_get(store: str, key: str):
     with rlock:
         pk = _make_key(store, key)
         # Only return unexpired items

@@ -2,7 +2,7 @@ import time
 
 from pydantic import BaseModel
 
-from driver_key_value_store_sqlite import (
+from driver_key_value_store import (
     driver_key_value_store_del,
     driver_key_value_store_get,
     driver_key_value_store_put,
