@@ -17,7 +17,7 @@ def serve_wsgi(routes, debug=False):
             for key, value in environ.items():
                 helper_log(__file__, f"{key}: {value}")
         method = environ["REQUEST_METHOD"].lower()
-        path = environ["PATH_INFO"].lower()
+        path = environ["PATH_INFO"]
         query = environ.get("QUERY_STRING", "")
         request_headers = {}
         for key in environ:

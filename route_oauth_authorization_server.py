@@ -10,7 +10,6 @@ from config_oauth_authorization_server import (
 from helper_log import helper_log
 from helper_oauth_authorization_server import helper_oauth_authorization_server_sign_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
-from http_session import http_session_get_id
 from route_oauth_resource_owner_api import apis
 from route_static import route_static
 from store_oauth_authorization_server_client_credentials import (
@@ -27,7 +26,6 @@ from store_oauth_authorization_server_code_pkce_request import (
 from store_oauth_authorization_server_keys_current import (
     store_oauth_authorization_server_keys_current_get_and_cache,
 )
-from store_session import store_session_get, store_session_put
 
 rlock = RLock()
 
@@ -93,10 +91,10 @@ def route_oauth_authorization_server_authorize(http):
         assert len(q["state"]) == 1
         state = q["state"][0]
     new_code = helper_pkce_code_verifier()
-    session_id = http_session_get_id(http, "oauth")
-    if session_id:
-        session = store_session_get(session_id)
-        sub = session.sub
+    is_signed_in, sub, context = helper_hooks.hooks[
+        "oauth_authorization_server_is_signed_in"
+    ](http)
+    if is_signed_in:
         assert sub
         code_pkce_request = CodePkceRequest(
             client_id=client_id,
@@ -105,8 +103,9 @@ def route_oauth_authorization_server_authorize(http):
             state=state,
             sub=sub,  # Can be None to start with, it should be updated later if it is.
         )
-        session.value = dict(code=new_code)
-        store_session_put(session_id, session)
+        helper_hooks.hooks["oauth_authorization_server_on_save_code"](
+            http, context, new_code
+        )
         store_oauth_authorization_server_code_pkce_request_put(
             new_code, code_pkce_request
         )

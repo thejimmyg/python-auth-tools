@@ -52,6 +52,15 @@ pip install -r requirements-dev.txt
 
 The SAML functionality needs `xmlsec1`. You can get it on macOS with `brew install libxmlsec1`. On Debian bookworm, just install `python3-pysaml2` and it is a dependency.
 
+
+## macOS Terminal
+
+By the way my macOS terminal gets itself confused and stops passing on Ctrl+C sometimes. I've no idea why but [this fixes it](https://superuser.com/questions/1783488/ctrl-c-not-working-on-macos-zsh):
+
+```
+trap "echo hello" INT; trap INT
+```
+
 ## Config
 
 Optional:
@@ -146,7 +155,7 @@ rm -r chromedriver-mac-arm64
 Then you can run the tests with the path to the local `chromedriver` like this:
 
 ```sh
-rm -rf ./store ./test ./tmp && PATH="$PWD:$PATH" python3 test.py
+rm -rf ./store ./test ./tmp && PATH="$PWD:$PATH" python3 test.py app_test
 ```
 
 ## Using this via a git submodule
@@ -411,3 +420,12 @@ This flow is robust in the face of key rotation, and doesn't require a shared se
 ```mermaid
 sequenceDiagram
 ```
+
+## Examples
+
+```sh
+python3 cli_serve_gevent.py app_hello
+python3 cli_serve_gevent.py app_multi_upload
+```
+
+And a fuller example is in [example_app_everything/README.md](example_app_everything/README.md). To run it `cd example_app_everything` and then follow the README.md.

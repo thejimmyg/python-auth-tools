@@ -185,3 +185,29 @@ def plugin_oauth_test_route_oauth_authorization_server_consent(http):
                 ),
             )
             return
+
+
+def plugin_oauth_test_hook_oauth_authorization_server_is_signed_in(http):
+    try:
+        session_id = http_session_get_id(http, "oauth")
+        session = store_session_get(session_id)
+        sub = session.sub
+        assert sub
+    except Exception as e:
+        helper_log(
+            __file__,
+            "Not signed in, preparing code PKCE request without sub, and triggering login hook",
+            e,
+        )
+        return False, None, None
+    else:
+        return True, sub, dict(session_id=session_id, session=session)
+
+
+def plugin_oauth_test_hook_oauth_authorization_server_on_save_code(
+    http, context, new_code
+):
+    session = context["session"]
+    session_id = context["session_id"]
+    session.value.update(dict(code=new_code))
+    store_session_put(session_id, session)

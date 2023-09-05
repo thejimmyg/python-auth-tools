@@ -3,10 +3,15 @@ from markupsafe import Markup
 import helper_hooks
 from driver_key_value_store_sqlite import (
     driver_key_value_store_sqlite_cleanup,
+    driver_key_value_store_sqlite_del,
+    driver_key_value_store_sqlite_get,
     driver_key_value_store_sqlite_init,
+    driver_key_value_store_sqlite_put,
 )
 from plugin_oauth_test import (
+    plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
     plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
+    plugin_oauth_test_hook_oauth_authorization_server_on_save_code,
     plugin_oauth_test_hook_oauth_code_pkce_on_success,
     plugin_oauth_test_route_oauth_authorization_server_consent,
     plugin_oauth_test_route_oauth_authorization_server_login,
@@ -56,8 +61,8 @@ hooks = helper_hooks.hooks = {
     "routes": {
         "/saml2/login/": route_saml_sp_login,
         "/saml2/acs/": route_saml_sp_acs,
-        "": route_home,
-        "/": route_not_found,
+        "/": route_home,
+        "*": route_not_found,
         "/api": route_oauth_resource_owner_home,
         "/api/v1": route_oauth_resource_owner_api_v1,
         "/api/openapi.json": route_oauth_resource_owner_openapi,
@@ -74,4 +79,9 @@ hooks = helper_hooks.hooks = {
     },
     "oauth_code_pkce_on_success": plugin_oauth_test_hook_oauth_code_pkce_on_success,
     "oauth_authorization_server_on_authorize_when_not_signed_in": plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
+    "oauth_authorization_server_is_signed_in": plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
+    "oauth_authorization_server_on_save_code": plugin_oauth_test_hook_oauth_authorization_server_on_save_code,
+    "driver_key_value_store_del": driver_key_value_store_sqlite_del,
+    "driver_key_value_store_get": driver_key_value_store_sqlite_get,
+    "driver_key_value_store_put": driver_key_value_store_sqlite_put,
 }

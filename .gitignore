@@ -4,8 +4,8 @@
 /chromedriver
 /store/driver_key_value_store/sqlite.db
 /store/oauth_authorization_server/jwks.json
-/store/oauth_authorization_server/private_keys/
+/store/oauth_authorization_server/private_keys/test
 /store/webhook_provider/jwks.json
-/store/webhook_provider/private_keys/
+/store/webhook_provider/private_keys/test
 /test
 /tmp

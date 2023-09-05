@@ -58,8 +58,9 @@ def helper_http_handle(routes, method, path, query, request_headers, request_bod
     response = Response(status="200 OK", headers={}, body=None)
     http = Http(request=request, response=response, context=dict(uid=uuid.uuid4()))
     request_path = http.request.path
-    if request_path == "/":
-        request_path = ""
+    # assert request_path != '*' # Actually it can be * because this will just call the same thing as the * route anyway
+    # if request_path == "/":
+    #    request_path = ""
 
     try:
         route = routes.get(request_path)
@@ -70,16 +71,23 @@ def helper_http_handle(routes, method, path, query, request_headers, request_bod
         if not found:
             candidates = []
             for path in routes:
-                if path.endswith("/") and http.request.path.startswith(path):
+                if (
+                    path != "/"
+                    and path.endswith("/")
+                    and http.request.path.startswith(path)
+                ):
                     candidates.append(path)
             if candidates:
                 # Choose the longest matching candidate
                 routes[sorted(candidates)[-1]](http)
                 found = True
-        # This should never happen because you can always add a route {..., "/": not_found, ...}
         if not found:
-            http.response.status = "404 Not Found"
-            http.response.body = b"404 Not Found"
+            if "*" in routes:
+                routes["*"](http)
+            else:
+                # This should never happen because you can always add a route {..., "*": not_found, ...}
+                http.response.status = "404 Not Found"
+                http.response.body = b"404 Not Found"
     except RespondEarly:
         pass
     except Exception:
