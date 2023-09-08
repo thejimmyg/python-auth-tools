@@ -2,12 +2,18 @@ import urllib.parse
 
 from markupsafe import Markup
 
+from error import NotFound
 from helper_log import helper_log
 from helper_meta_refresh import helper_meta_refresh_html
 from helper_oauth_authorization_server import (
     helper_oauth_authorization_server_prepare_redirect_uri,
 )
-from http_session import http_session_create, http_session_get_id
+from http_session import (
+    get_session_id_or_respond_early_not_logged_in,
+    get_session_or_respond_early_not_logged_in,
+    http_session_create,
+    http_session_id,
+)
 from render import render
 from store_oauth_authorization_server_code_pkce import (
     store_oauth_authorization_server_code_pkce_get,
@@ -50,11 +56,7 @@ def plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_sign
 
 def plugin_oauth_test_route_oauth_authorization_server_login(http):
     helper_log(__file__, "In login hook")
-    session_id = http_session_get_id(http, "oauth")
-    if not session_id:
-        http.response.status = "401 Not Authenticated"
-        http.response.body = "401 Not Authenticated"
-        return
+    session_id = get_session_id_or_respond_early_not_logged_in(http, "oauth")
     sub = ""
     if http.request.method == "post":
         form = urllib.parse.parse_qs(
@@ -92,12 +94,7 @@ def plugin_oauth_test_route_oauth_authorization_server_login(http):
 
 
 def plugin_oauth_test_route_oauth_authorization_server_consent(http):
-    session_id = http_session_get_id(http, "oauth")
-    if not session_id:
-        http.response.status = "401 Not Authenticated"
-        http.response.body = "401 Not Authenticated"
-        return
-    session = store_session_get(session_id)
+    session_id, session = get_session_or_respond_early_not_logged_in(http, "oauth")
     try:
         code_pkce_request = store_oauth_authorization_code_pkce_request_get(
             session.value["code"]
@@ -109,7 +106,6 @@ def plugin_oauth_test_route_oauth_authorization_server_consent(http):
         helper_log(__file__, e)
         http.response.body = "OAuth flow has expired. Please try again."
         return
-
     url = helper_oauth_authorization_server_prepare_redirect_uri(
         session.value["code"],
         code_pkce_request,
@@ -189,18 +185,22 @@ def plugin_oauth_test_route_oauth_authorization_server_consent(http):
 
 def plugin_oauth_test_hook_oauth_authorization_server_is_signed_in(http):
     try:
-        session_id = http_session_get_id(http, "oauth")
+        session_id = http_session_id(http, "oauth")
         session = store_session_get(session_id)
-        sub = session.sub
-        assert sub
-    except Exception as e:
+    except NotFound:
         helper_log(
             __file__,
-            "Not signed in, preparing code PKCE request without sub, and triggering login hook",
-            e,
+            "No session, preparing code PKCE request without sub, and triggering login hook",
         )
         return False, None, None
     else:
+        sub = session.sub
+        if not sub:
+            helper_log(
+                __file__,
+                "No sub in session, preparing code PKCE request without sub, and triggering login hook",
+            )
+            return False, None, None
         return True, sub, dict(session_id=session_id, session=session)
 
 

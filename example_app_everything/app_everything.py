@@ -19,10 +19,11 @@ from driver_key_value_store_sqlite import (
     driver_key_value_store_sqlite_init,
     driver_key_value_store_sqlite_put,
 )
+from error import NotFound
 from helper_log import helper_log
 from helper_meta_refresh import helper_meta_refresh_html
 from helper_oauth_resource_owner import helper_oauth_resource_owner_verify_jwt
-from http_session import http_session_create, http_session_destroy, http_session_get_id
+from http_session import http_session_create, http_session_destroy, http_session_id
 from plugin_oauth_test import (
     plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
     plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
@@ -31,7 +32,7 @@ from plugin_oauth_test import (
     plugin_oauth_test_route_oauth_authorization_server_login,
 )
 from render import render
-from route_not_found import route_not_found
+from route_error import route_error_not_found, route_error_not_logged_in
 from route_oauth_authorization_server import (
     route_oauth_authorization_server_authorize,
     route_oauth_authorization_server_jwks_json,
@@ -94,13 +95,6 @@ def hook_oauth_code_pkce_on_success(http, response):
     http.response.body = helper_meta_refresh_html("/oauth-code-pkce/dashboard")
 
 
-def route_not_logged_in(http):
-    http.response.status = "401 Not Authenticated"
-    http.response.body = render(
-        title="Not Logged In", body=Markup("""<p>Not logged in.</p>""")
-    )
-
-
 def route_home(http):
     http.response.body = render(
         "Home",
@@ -123,7 +117,10 @@ def route_home(http):
 
 
 def route_auth(http):
-    session_id = http_session_get_id(http, "oauth")
+    try:
+        session_id = http_session_id(http, "oauth")
+    except NotFound:
+        session_id = None
     if session_id:
         login_or_logout = Markup(
             """
@@ -159,8 +156,8 @@ main_markup = Markup(
   </head>
   <body>
     <main>
-        <h1><a href="{url_home}">Everything</a></h1>
-        <h2>{{title}}</h2>
+        <h2><a href="{url_home}">Everything</a></h2>
+        <h1>{{title}}</h1>
         {{body}}
     </main>
 	<script src="/script.js"></script>
@@ -174,20 +171,24 @@ def route_redirect_to_dashboard(http):
 
 
 def route_oauth_authorization_server_logout(http):
-    session_id = http_session_get_id(http, "oauth")
+    try:
+        session_id = http_session_id(http, "oauth")
+    except NotFound:
+        return route_error_not_logged_in(http)
+
     logged_in = True
     try:
         store_session_destroy(session_id)
     except Exception as e:
         logged_in = False
-        helper_log(__file__, "Could not destory store session:", e)
+        helper_log(__file__, "Could not destroy store session:", e)
     try:
         http_session_destroy(http, "oauth")
     except Exception as e:
-        helper_log(__file__, "Could not destory http session:", e)
+        helper_log(__file__, "Could not destroy http session:", e)
         logged_in = False
     if not logged_in:
-        return route_not_logged_in(http)
+        return route_error_not_logged_in(http)
     http.response.body = render(
         title="Logged out",
         body=Markup("""<p>Successfully logged out.</p>"""),
@@ -195,20 +196,23 @@ def route_oauth_authorization_server_logout(http):
 
 
 def route_code_pkce_logout(http):
-    session_id = http_session_get_id(http, "oauth_code_pkce")
+    try:
+        session_id = http_session_id(http, "oauth_code_pkce")
+    except NotFound:
+        return route_error_not_logged_in(http)
     logged_in = True
     try:
         store_session_destroy(session_id)
     except Exception as e:
-        helper_log(__file__, "Could not destory store session:", e)
+        helper_log(__file__, "Could not destroy store session:", e)
         logged_in = False
     try:
         http_session_destroy(http, "oauth_code_pkce")
     except Exception as e:
-        helper_log(__file__, "Could not destory http session:", e)
+        helper_log(__file__, "Could not destroy http session:", e)
         logged_in = False
     if not logged_in:
-        return route_not_logged_in(http)
+        return route_error_not_logged_in(http)
     http.response.body = render(
         title="Logged out",
         body=Markup("""<p>Successfully logged out.</p>"""),
@@ -217,10 +221,9 @@ def route_code_pkce_logout(http):
 
 def route_token(http):
     try:
-        session_id = http_session_get_id(http, "oauth")
-    except Exception as e:
-        helper_log(__file__, e)
-        return route_not_logged_in(http)
+        session_id = http_session_id(http, "oauth")
+    except NotFound:
+        return route_error_not_logged_in(http)
     http.response.body = render(
         title="Auth Token",
         body=Markup(
@@ -239,11 +242,10 @@ def route_token(http):
 
 def route_client_token(http):
     try:
-        session_id = http_session_get_id(http, "oauth_code_pkce")
+        session_id = http_session_id(http, "oauth_code_pkce")
         session = store_session_get(session_id)
-    except Exception as e:
-        helper_log(__file__, e)
-        return route_not_logged_in(http)
+    except NotFound:
+        return route_error_not_logged_in(http)
     http.response.body = render(
         title="Client Token",
         body=Markup(
@@ -269,7 +271,7 @@ helper_hooks.hooks = {
     "urls": urls,
     "routes": {
         # Default
-        "*": route_not_found,
+        "*": route_error_not_found,
         urls["url_home"]: route_home,
         # Auth Routes
         urls["url_auth"]: route_auth,
@@ -305,4 +307,5 @@ helper_hooks.hooks = {
     "driver_key_value_store_del": driver_key_value_store_sqlite_del,
     "driver_key_value_store_get": driver_key_value_store_sqlite_get,
     "driver_key_value_store_put": driver_key_value_store_sqlite_put,
+    "main_markup": main_markup,
 }

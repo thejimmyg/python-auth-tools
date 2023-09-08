@@ -17,7 +17,7 @@ from plugin_oauth_test import (
     plugin_oauth_test_route_oauth_authorization_server_login,
 )
 from render import render
-from route_not_found import route_not_found
+from route_error import route_error_not_found
 from route_oauth_authorization_server import (
     route_oauth_authorization_server_authorize,
     route_oauth_authorization_server_jwks_json,
@@ -62,7 +62,7 @@ hooks = helper_hooks.hooks = {
         "/saml2/login/": route_saml_sp_login,
         "/saml2/acs/": route_saml_sp_acs,
         "/": route_home,
-        "*": route_not_found,
+        "*": route_error_not_found,
         "/api": route_oauth_resource_owner_home,
         "/api/v1": route_oauth_resource_owner_api_v1,
         "/api/openapi.json": route_oauth_resource_owner_openapi,

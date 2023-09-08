@@ -6,6 +6,8 @@ from saml2.config import Config
 from saml2.sigver import get_xmlsec_binary
 
 from config import config_url
+from config_saml_sp import config_saml_sp_slack_seconds
+from helper_log import helper_log
 
 
 @dataclass
@@ -64,8 +66,15 @@ def saml_client():
                 ],
             }
         ],
+        "accepted_time_diff": config_saml_sp_slack_seconds,
     }
 
+    helper_log(
+        __file__,
+        "Allowing slack in the SAML time of",
+        saml_settings["accepted_time_diff"],
+        "seconds",
+    )
     config = Config()
     config.load(saml_settings)
 

@@ -1,16 +1,20 @@
 from http import cookies
 
 from config import config_host, config_scheme
+from error import NotFound
+from helper_http import RespondEarly
 from helper_pkce import helper_pkce_code_verifier
+from route_error import route_error_not_logged_in
+from store_session import store_session_get
 
 
-def http_session_get_id(http, name):
+def http_session_id(http, name):
     cookie = cookies.SimpleCookie()
     if "cookie" in http.request.headers:
         cookie.load(http.request.headers["cookie"])
     if name in cookie:
         return cookie[name].value
-    return None
+    raise NotFound(f"No session ID in cookie '{name}'")
 
 
 def http_session_create(http, name):
@@ -58,3 +62,21 @@ def _set_response_cookie_header(http, cookie):
     if "cache-control" in http.response.headers:
         raise Exception("Cannot currently set the cache control headers twice")
     http.response.headers["cache-control"] = 'no-cache="set-cookie"'
+
+
+def get_session_id_or_respond_early_not_logged_in(http, name):
+    try:
+        return http_session_id(http, name)
+    except NotFound as e:
+        route_error_not_logged_in(http)
+        raise RespondEarly(str(e))
+
+
+def get_session_or_respond_early_not_logged_in(http, name):
+    try:
+        session_id = http_session_id(http, name)
+        session = store_session_get(session_id)
+        return session_id, session
+    except NotFound as e:
+        route_error_not_logged_in(http)
+        raise RespondEarly(str(e))

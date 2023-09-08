@@ -1,3 +1,7 @@
+# We need a specific version of urllib, otherwise there will be conflicts in lambda
+# -r requirements-lambda.txt
+
+
 # I've chosen these versions to be as close to Debian bookworm-provided versions as possible
 # This means that you can just apt install them instead on Debian and this code will work.
 # Where there isn't an equivalet in PyPi I've used a near version that remains compatible.

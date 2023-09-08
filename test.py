@@ -619,6 +619,8 @@ if __name__ == "__main__":
         "STORE_DIR": store_dir,
         "TMP_DIR": tmp_dir,
     }
+    if os.environ.get("SAML_SP_SLACK_SECONDS"):
+        env["SAML_SP_SLACK_SECONDS"] = os.environ["SAML_SP_SLACK_SECONDS"]
 
     exec_cli_oauth_authorization_server_code_pkce_put(env, url)
     exec_cli_oauth_authorization_server_client_credentials_put(env)

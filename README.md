@@ -16,6 +16,12 @@ See [https://www.oauth.com/oauth2-servers/definitions/](https://www.oauth.com/oa
 
 You need to be running an NTP daemon (and may need to restart it if you see drift) otherwise the SAML flow might fail because the token is issued by the remote server before your computer's current time.
 
+If you don't have NTP running and up to date, you can set some slack like this:
+
+```
+export SAML_SP_SLACK_SECONDS='3'
+```
+
 ## Code Structure
 
 I'd like this code to run in multiple very different environments like Raspberry Pi or AWS Lambda. So there are a few things that are a bit different:
@@ -134,7 +140,7 @@ Install Chromium and Chromium Webdriver:
 apt install -y chromium chromium-driver python3-selenium
 ```
 
-Then run (deleting your existing stores):
+Then run (WARNING: deletes your existing `store`, `test` and `tmp` directories):
 
 ```sh
 sudo systemctl restart ntp
@@ -152,10 +158,17 @@ rm chromedriver-mac-arm64.zip
 rm -r chromedriver-mac-arm64
 ```
 
-Then you can run the tests with the path to the local `chromedriver` like this:
+Then you can run the tests with the path to the local `chromedriver` like this (WARNING: deletes your existing `store`, `test` and `tmp` directories):
 
 ```sh
-rm -rf ./store ./test ./tmp && PATH="$PWD:$PATH" python3 test.py app_test
+rm -rf ./store ./test ./tmp && PATH="${PWD}:${PATH}" python3 test.py cli_serve_gevent.py
+rm -rf ./store ./test ./tmp && PATH="${PWD}:${PATH}" python3 test.py cli_serve_wsgi.py
+```
+
+You might need to set some slack if your time doesn't match the test SAML IdP time:
+
+```
+export SAML_SP_SLACK_SECONDS='3'
 ```
 
 ## Using this via a git submodule

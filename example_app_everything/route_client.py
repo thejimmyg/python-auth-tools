@@ -1,12 +1,16 @@
 from markupsafe import Markup
 
 import helper_hooks
-from http_session import http_session_get_id
+from error import NotFound
+from http_session import http_session_id
 from render import render
 
 
 def route_client_home(http):
-    session_id = http_session_get_id(http, "oauth_code_pkce")
+    try:
+        session_id = http_session_id(http, "oauth_code_pkce")
+    except NotFound:
+        session_id = None
     if session_id:
         login_or_logout = Markup(
             """

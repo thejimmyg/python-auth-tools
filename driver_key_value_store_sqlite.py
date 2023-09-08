@@ -9,6 +9,7 @@ import time
 from threading import RLock
 
 from config_driver_key_value_store import config_driver_key_value_store_db_path
+from store import NotFoundInStoreDriver
 
 # This might not be needed if we create a cursor within each function, but I don't know enough about the underlying implementation to be sure.
 rlock = RLock()
@@ -117,4 +118,6 @@ def driver_key_value_store_sqlite_get(store: str, key: str):
         )
         rows = _cur.fetchall()
         # helper_log(__file__, len(rows), rows)
+        if len(rows) == 0:
+            raise NotFoundInStoreDriver(f"No such key '{key}' in the store")
         return json.loads(rows[0][0])
