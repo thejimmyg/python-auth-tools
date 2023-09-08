@@ -1,4 +1,6 @@
+/.venv
 /__pycache__
 /store/driver_key_value_store/sqlite.db
-/store/oauth_authoirzation_server/private_keys/test
 /store/oauth_authorization_server/jwks.json
+/store/oauth_authorization_server/private_keys/test
+/tmp

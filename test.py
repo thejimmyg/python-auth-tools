@@ -12,6 +12,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
+import helper_hooks
 from app_test import render_home
 from driver_key_value_store_sqlite import (
     driver_key_value_store_sqlite_del,
@@ -34,6 +35,77 @@ from store_session import Session, store_session_get, store_session_put
 WIGGLE_ROOM = 2
 # CLI_SERVE_FILE = "cli_serve_gevent.py"
 CLI_SERVE_FILE = sys.argv[1]
+
+from helper_navigation import (
+    _crumbs_cache,
+    _helper_navigation_generate_and_cache_breadcrumbs,
+)
+
+
+def test_navigation():
+    url_home = "/"
+    url_auth = url_home + "auth"
+    url_client = url_home + "client"
+    url_resource_owner_a = url_home + "resource-owner-a"
+    url_resource_owner_b = url_home + "resource-owner-b"
+    url_auth_session = url_auth + "/session"
+    url_auth_logout = url_auth + "/logout"
+    url_client_login = url_client + "/login"
+    url_client_logout = url_client + "/logout"
+    url_client_token = url_client + "/token"
+    url_client + "/callback"
+    url_resource_owner_a_api = url_resource_owner_a + "/api"
+    url_resource_owner_b_api = url_resource_owner_b + "/api"
+    url_resource_owner_a_api + "/read"
+    url_resource_owner_b_api + "/write"
+
+    navigation = {
+        (url_home, "Home"): {
+            (url_auth, "Auth"): {
+                (url_auth_session, "Auth Session"): {},
+                (url_auth_logout, "Auth Logout"): {},
+            },
+            (url_client, "Client"): {
+                (url_client_login, "Client Login"): {},
+                (url_client_token, "Client Token"): {},
+                (url_client_logout, "Client Logout"): {},
+            },
+            (url_resource_owner_a, "Resource Owner A"): {
+                (url_resource_owner_a_api, "Resource Owner A API"): {}
+            },
+            (url_resource_owner_b, "Resource Owner B"): {
+                (url_resource_owner_b_api, "Resource Owner B API"): {}
+            },
+        }
+    }
+
+    helper_hooks.hooks["navigation"] = navigation
+
+    home_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(url_home)
+    assert home_crumbs == [("/", "Home")], home_crumbs
+    auth_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(url_auth)
+    assert auth_crumbs == [("/", "Home"), ("/auth", "Auth")], auth_crumbs
+    auth_session_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(
+        url_auth_session
+    )
+    assert auth_session_crumbs == [
+        ("/", "Home"),
+        ("/auth", "Auth"),
+        ("/auth/session", "Auth Session"),
+    ], auth_session_crumbs
+    client_logout_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(
+        url_client_logout
+    )
+    assert client_logout_crumbs == [
+        ("/", "Home"),
+        ("/client", "Client"),
+        ("/client/logout", "Client Logout"),
+    ], client_logout_crumbs
+    client_logout_crumbs2 = _helper_navigation_generate_and_cache_breadcrumbs(
+        url_client_logout
+    )
+    assert client_logout_crumbs2 == client_logout_crumbs
+    assert len(_crumbs_cache) == 4, len(_cache)
 
 
 def test_driver_key_value_store_sqlite():
@@ -600,6 +672,7 @@ if __name__ == "__main__":
     helper_hooks_setup("app_test")
 
     # Unit tests
+    test_navigation()
     test_render()
     test_driver_key_value_store_sqlite()
     test_store()
