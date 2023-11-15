@@ -1,5 +1,3 @@
-from markupsafe import Markup
-
 import helper_hooks
 from driver_key_value_store_sqlite import (
     driver_key_value_store_sqlite_cleanup,
@@ -16,7 +14,7 @@ from plugin_oauth_test import (
     plugin_oauth_test_route_oauth_authorization_server_consent,
     plugin_oauth_test_route_oauth_authorization_server_login,
 )
-from render import render
+from render import Base, Html
 from route_error import route_error_not_found
 from route_oauth_authorization_server import (
     route_oauth_authorization_server_authorize,
@@ -37,18 +35,25 @@ from route_saml_sp import route_saml_sp_acs, route_saml_sp_login
 from route_static import route_static
 from route_webhook_provider import route_webhook_provider_jwks_json
 
-home_markup = Markup(
-    """<p>
-    <a href="/oauth-code-pkce/login">Login without scopes</a>,  <a href="/oauth-code-pkce/login?scope=read">login with read scope</a>, <a href="/oauth-code-pkce/login?scope=no-such-scope">login with an invalid scope</a>, <a href="/saml2/login/">login with SAML</a>.</p>"""
-)
 
+class Home(Base):
+    def __init__(self, title):
+        self._title = title
 
-def render_home(title: str):
-    return render(title=title, body=home_markup)
+    def body(self):
+        return Html(
+            """\
+      <p>
+        <a href="/oauth-code-pkce/login">Login without scopes</a>,
+        <a href="/oauth-code-pkce/login?scope=read">login with read scope</a>,
+        <a href="/oauth-code-pkce/login?scope=no-such-scope">login with an invalid scope</a>,
+        <a href="/saml2/login/">login with SAML</a>.
+      </p>"""
+        )
 
 
 def route_home(http):
-    http.response.body = render_home(title="OAuth Client Home")
+    http.response.body = Home(title="OAuth Client Home")
 
 
 hooks = helper_hooks.hooks = {

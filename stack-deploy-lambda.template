@@ -6,6 +6,12 @@ Parameters:
     Type: String
     MinLength: "1"
 
+  TableName:
+    Description: DynamoDB table name
+    Type: String
+    MinLength: "1"
+    Default: "Auth"
+
   HostedZoneId:
     Description: Hosted Zone ID of the domain, for certificate verification and for API Gateway records
     Type: String
@@ -40,7 +46,7 @@ Resources:
       Parameters:
         Layers: !Ref Layers
         ReservedConcurrency: !Ref ReservedConcurrency
-        EncodedEnvironment: 'KVSTORE_DYNAMODB_TABLE_NAME|Auth'
+        EncodedEnvironment: !Sub 'KVSTORE_DYNAMODB_TABLE_NAME|${DynamoTable}'
 
   CertificateStack:
     Type: AWS::CloudFormation::Stack
@@ -69,3 +75,43 @@ Resources:
         Api: !GetAtt ApiGatewayStack.Outputs.Api
         V1Stage: !GetAtt ApiGatewayStack.Outputs.V1Stage
       TemplateURL: serve/adapter/lambda_function/stack-api-gateway-domain.yml
+
+  DynamoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-${TableName}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  TasksLambdaDynamoPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${AWS::StackName}-TasksLambdaDynamoPolicy'
+      Description: Managed policy for the Lambda function
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+            Resource:
+              - !GetAtt DynamoTable.Arn
+
+      # Define the role here, rather than the managed policy on the role, to avoid a circular dependency
+      Roles:
+        - !GetAtt HttpLambdaStack.Outputs.HttpLambdaExecutionRoleFriendlyName

@@ -1,7 +1,5 @@
 import urllib.parse
 
-from markupsafe import Markup
-
 from error import NotFound
 from helper_log import helper_log
 from helper_meta_refresh import helper_meta_refresh_html
@@ -14,7 +12,7 @@ from http_session import (
     http_session_create,
     http_session_id,
 )
-from render import render
+from render import Base, Html
 from store_oauth_authorization_server_code_pkce import (
     store_oauth_authorization_server_code_pkce_get,
 )
@@ -36,11 +34,13 @@ from store_session import (
 def plugin_oauth_test_hook_oauth_code_pkce_on_success(http, response):
     access_token = response["access_token"]
     helper_log(__file__, "Access token:", access_token)
-    http.response.body = render(
+    http.response.body = Base(
         title="Success!",
-        body=Markup(
-            """<p>Successfully logged in. Here's the access token: <span id="jwt">{access_token}</span></p>"""
-        ).format(access_token=access_token),
+        body=Html(
+            """<p>Successfully logged in. Here's the access token: <span id="jwt">"""
+        )
+        + access_token
+        + Html("</span></p>"),
     )
 
 
@@ -72,15 +72,23 @@ def plugin_oauth_test_route_oauth_authorization_server_login(http):
             sub = subs[0]
     if http.request.method == "get" or not sub:
         # Note we don't really need a CSRF check here because a username and password would really be used to authenticate the request
-        form = Markup(
-            """
+        form = (
+            Html(
+                '''
             <form method="post">
-                <input type="text" name="sub" placeholder="sub" value="{sub}">
+                <input type="text" name="sub" placeholder="sub" value="'''
+            )
+            + sub
+            + Html(
+                """">
                 <input type="submit">
             </form>
-            <p>Session ID is: {session_id}"""
-        ).format(session_id=session_id, sub=sub)
-        http.response.body = render(title="Login", body=form)
+            <p>Session ID is: """
+            )
+            + session_id
+            + Html("</p>")
+        )
+        http.response.body = Base(title="Login", body=form)
     else:
         session = store_session_get(session_id)
         store_session_set_sub(session_id, sub)
@@ -158,27 +166,33 @@ def plugin_oauth_test_route_oauth_authorization_server_consent(http):
                 http.response.body = "Rejected!"
                 return
         else:
-            http.response.body = render(
-                title="Permissions Consent",
-                body=Markup(
-                    """
-                <p id="consent-msg">The page at {redirect_uri} is asking for the following permissions to your data:</p>
-
-                {permissions}
-
+            body = Html("""<p id="consent-msg">The page at """)
+            body += code_pkce.redirect_uri
+            body += Html(
+                """ is asking for the following permissions to your data:</p>"""
+            )
+            body += Html("<ul>")
+            for scope in code_pkce_request.scopes:
+                body += Html("<li>") + scope + Html("</li>")
+            body += Html("</ul>")
+            body += (
+                Html(
+                    '''
                 <form method="POST" action="">
-                  <input type="hidden" name="csrf" value="{csrf}">
+                  <input type="hidden" name="csrf" value="'''
+                )
+                + session.csrf
+                + Html(
+                    """">
                   <input type="submit" name="approve" value="Approve">
                   <input type="submit" name="reject" value="Reject">
                 </form>
-                """.format(
-                        redirect_uri=code_pkce.redirect_uri,
-                        csrf=session.csrf,
-                        permissions=Markup("<ul><li>")
-                        + Markup("</li><li>").join(code_pkce_request.scopes)
-                        + Markup("</li></ul>"),
-                    )
-                ),
+                """
+                )
+            )
+            http.response.body = Base(
+                title="Permissions Consent",
+                body=body,
             )
             return
 

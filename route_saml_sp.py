@@ -4,7 +4,7 @@ import urllib.parse
 from saml2 import BINDING_HTTP_POST
 
 from helper_saml_sp import saml_client
-from render_saml_sp import render_saml_sp_success
+from render import Base, Html
 
 
 def route_saml_sp_login(http):
@@ -32,4 +32,11 @@ def route_saml_sp_acs(http):
     session_info = authn_response.session_info()
     # Serialise the NameID class
     session_info["name_id"] = str(session_info["name_id"])
-    http.response.body = render_saml_sp_success(session_info=json.dumps(session_info))
+    http.response.body = Base(
+        title="Success!",
+        body=Html(
+            """<p>Successfully logged in with SAML. Here's the session info: <span id="session_info">"""
+        )
+        + json.dumps(session_info)
+        + Html("""</span></p>"""),
+    )

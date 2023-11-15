@@ -1,10 +1,8 @@
 import cgi
 from io import BytesIO
 
-from markupsafe import Markup
-
 import helper_hooks
-from render import render
+from render import Base, Html
 
 
 def hello(http):
@@ -23,13 +21,14 @@ def hello(http):
         for file in fields.get("files"):
             counter += 1
             print(counter, len(file))
-        http.response.body = render(
-            "Upload files", body=Markup("<p>Got {} files.</p>".format(counter))
+        http.response.body = Base(
+            title="Upload files",
+            body=Html("<p>Got ") + str(counter) + Html("files.</p>"),
         )
     else:
-        http.response.body = render(
-            "Upload files",
-            body=Markup(
+        http.response.body = Base(
+            title="Upload files",
+            body=Html(
                 """
         <form action="" method="POST" enctype="multipart/form-data">
           <label for="files">Select files:</label>

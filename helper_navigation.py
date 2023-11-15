@@ -1,4 +1,4 @@
-from markupsafe import Markup
+from render import Html
 
 import helper_hooks
 from helper_log import helper_log
@@ -40,12 +40,14 @@ _html_cache = {}
 def helper_navigation_generate_and_cache_breadcrumbs(url):
     if url not in _html_cache:
         crumbs = _helper_navigation_generate_and_cache_breadcrumbs(url)
-        html = Markup("")
+        html = Html("")
         if len(crumbs) > 1:
             for part in crumbs[:-1]:
-                html += Markup('<a href="{target}">{title}</a> &gt; ').format(
-                    target=part[0], title=part[1]
+                target = part[0]
+                title = part[1]
+                html += (
+                    Html('<a href="') + target + Html('">') + title + Html("</a> &gt; ")
                 )
-            html += Markup("{title}").format(title=crumbs[-1][1])
+            html += crumbs[-1][1]
         _html_cache[url] = html
     return _html_cache[url]

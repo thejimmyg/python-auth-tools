@@ -1,11 +1,14 @@
 import json
 
 from config import config_url
-from render_oauth_resource_owner import render_oauth_resource_owner_home
+from render import Base, Html
 
 
 def route_oauth_resource_owner_home(http):
-    http.response.body = render_oauth_resource_owner_home(title="Resource Owner Home")
+    http.response.body = Base(
+        title="Resource Owner Home",
+        body=Html("<p>This is where the API V1 definitions will go.</p>"),
+    )
 
 
 def route_oauth_resource_owner_openapi(http):

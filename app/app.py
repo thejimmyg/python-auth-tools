@@ -1,9 +1,7 @@
-
-import json
 import traceback
-import uuid
 
 from helper_log import helper_log
+
 
 def make_app(routes):
     def app(http):
@@ -11,7 +9,7 @@ def make_app(routes):
         # assert request_path != '*' # Actually it can be * because this will just call the same thing as the * route anyway
         # if request_path == "/":
         #    request_path = ""
-    
+
         try:
             route = routes.get(request_path)
             found = False
@@ -38,7 +36,7 @@ def make_app(routes):
                     # This should never happen because you can always add a route {..., "*": not_found, ...}
                     http.response.status = "404 Not Found"
                     http.response.body = b"404 Not Found"
-        except RespondEarly:
+        except http.response.RespondEarly:
             pass
         except Exception:
             # Keep whatever headers have been set (e.g. cookies), but show a 500
@@ -47,16 +45,11 @@ def make_app(routes):
             helper_log(__file__, "ERROR:", traceback.format_exc())
         # _canonicalize_response(http)
         return http
-    
-    
+
     # def _canonicalize_response(http):
     #     response_body_changed = False
     #     auto_content_type: bytes = None
-    #     if type(http.response.body) is Markup:
-    #         http.response.body = http.response.body.encode("utf8")
-    #         response_body_changed = True
-    #         auto_content_type = "text/html; charset=UTF8"
-    #     elif type(http.response.body) is str:
+    #     if type(http.response.body) is str:
     #         http.response.body = http.response.body.encode("utf8")
     #         response_body_changed = True
     #         auto_content_type = "text/plain; charset=UTF8"
@@ -95,7 +88,7 @@ def make_app(routes):
 
 import helper_hooks
 
-hook_module_path = 'app_test'
+hook_module_path = "app_test"
 helper_hooks.helper_hooks_setup(hook_module_path)
 
 app = make_app(routes=helper_hooks.hooks["routes"])

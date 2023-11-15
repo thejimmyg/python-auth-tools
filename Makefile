@@ -1,7 +1,7 @@
 .PHONY: clean deploy test check format deploy-lambda venv serve
 
 venv:
-	python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt isort autoflake black mypy cfn-lint
+	python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt autoflake black mypy cfn-lint
 
 deploy:
 	@echo "Did you mean 'make deploy-lambda'?"
@@ -12,22 +12,23 @@ check:
 	  stack-deploy-lambda.template
 
 test: clean
-	PATH="${PWD}:${PATH}" STORE_DIR=store SAML_SP_SLACK_SECONDS='3' python3 test.py cli_serve_wsgi.py
+	PATH="${PWD}:${PATH}" STORE_DIR=/tmp/store SAML_SP_SLACK_SECONDS='3' python3 test.py cli_serve_wsgi.py
 
 format: format-python format-cfn
 
 format-python:
-	.venv/bin/isort . && .venv/bin/autoflake -r --in-place --remove-unused-variables --remove-all-unused-imports . && .venv/bin/black .
+	.venv/bin/autoflake -r --in-place --remove-unused-variables --remove-all-unused-imports . && .venv/bin/black .
 
 format-cfn:
 	cfn-format -w stack-* 
 
 clean:
-	rm -f lambda.zip
-	rm -rf ./store ./test ./tmp
+	rm -f lambda.zip index.py
+	rm -rf /tmp/store ./test /tmp/tmp
 	find . -type d  -name __pycache__ -print0 | xargs -0 rm -rf
 
 lambda.zip: clean
+	cp serve/adapter/lambda_function/index.py index.py
 	zip --exclude '*/__pycache__/*' -r lambda.zip app serve kvstore *.py
 
 deploy-check-env-aws:

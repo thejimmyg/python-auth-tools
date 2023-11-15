@@ -7,7 +7,7 @@ This module does a few things for us:
 
 * Add a content length if it is missing
 * Convert headers to bytes, using ascii for keys, and UTF-8 for values
-* Encode the body as UTF8 if it is returned as a string or Markup object
+* Encode the body as UTF8 if it is returned as a string, Html or Base object
 * JSON encode the body as UTF8 if it is a dict
 * If the body is changed and the Content-Type is missing, set it
 """
@@ -16,10 +16,10 @@ import json
 import traceback
 import uuid
 
-from markupsafe import Markup
 from pydantic import BaseModel
 
 from helper_log import helper_log
+from render import Base, Html
 
 
 class Request(BaseModel):
@@ -102,8 +102,8 @@ def helper_http_handle(routes, method, path, query, request_headers, request_bod
 def _canonicalize_response(http):
     response_body_changed = False
     auto_content_type: bytes = None
-    if type(http.response.body) is Markup:
-        http.response.body = http.response.body.encode("utf8")
+    if isinstance(http.response.body, (Html, Base)):
+        http.response.body = http.response.body.render().encode("utf8")
         response_body_changed = True
         auto_content_type = "text/html; charset=UTF8"
     elif type(http.response.body) is str:

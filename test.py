@@ -13,7 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 import helper_hooks
-from app_test import render_home
+from app_test import Home
 from driver_key_value_store_sqlite import (
     driver_key_value_store_sqlite_del,
     driver_key_value_store_sqlite_get,
@@ -22,9 +22,6 @@ from driver_key_value_store_sqlite import (
 from helper_log import helper_log
 from helper_oauth_resource_owner import helper_oauth_resource_owner_verify_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
-from render import render
-from render_oauth_resource_owner import render_oauth_resource_owner_home
-from render_saml_sp import render_saml_sp_success
 from store_oauth_authorization_server_code_pkce_request import (
     CodePkceRequest,
     store_oauth_authorization_server_code_pkce_request_get_and_delete,
@@ -207,31 +204,8 @@ def test_store():
 
 
 def test_render():
-    assert (
-        render(title="main")
-        == """<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>main</title>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  </head>
-  <body>
-    <main>
-        <h1>main</h1>
-        
-    </main>
-	<script src="/script.js"></script>
-  </body>
-</html>"""
-    ), render(title="main")
-
-    assert (
-        render_home(title="OAuth Client Home")
-        == """<!DOCTYPE html>
+    actual = Home(title="OAuth Client Home").render()
+    expected = """<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -243,58 +217,24 @@ def test_render():
   </head>
   <body>
     <main>
-        <h1>OAuth Client Home</h1>
-        <p>
-    <a href="/oauth-code-pkce/login">Login without scopes</a>,  <a href="/oauth-code-pkce/login?scope=read">login with read scope</a>, <a href="/oauth-code-pkce/login?scope=no-such-scope">login with an invalid scope</a>, <a href="/saml2/login/">login with SAML</a>.</p>
+      <h1>OAuth Client Home</h1>
+      <p>
+        <a href="/oauth-code-pkce/login">Login without scopes</a>,
+        <a href="/oauth-code-pkce/login?scope=read">login with read scope</a>,
+        <a href="/oauth-code-pkce/login?scope=no-such-scope">login with an invalid scope</a>,
+        <a href="/saml2/login/">login with SAML</a>.
+      </p>
     </main>
-	<script src="/script.js"></script>
+    <script src="/script.js"></script>
   </body>
 </html>"""
-    ), render_home(title="OAuth Client Home")
-
-    assert (
-        render_oauth_resource_owner_home(title="OAuth Resource Owner Home")
-        == """<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>OAuth Resource Owner Home</title>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  </head>
-  <body>
-    <main>
-        <h1>OAuth Resource Owner Home</h1>
-        <p>This is where the API V1 definitions will go.</p>
-    </main>
-	<script src="/script.js"></script>
-  </body>
-</html>"""
-    ), render_oauth_resource_owner_home(title="OAuth Resource Owner Home")
-
-    assert (
-        render_saml_sp_success(session_info={})
-        == """<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Success!</title>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  </head>
-  <body>
-    <main>
-        <h1>Success!</h1>
-        <p>Successfully logged in with SAML. Here's the session info: <span id="session_info">{}</span></p>
-    </main>
-	<script src="/script.js"></script>
-  </body>
-</html>"""
-    ), render_saml_sp_success(session_info={})
+    if actual != expected:
+        actual_lines = actual.split("\n")
+        for i, line in enumerate(expected.split("\n")):
+            if line != actual_lines[i]:
+                print("-", line)
+                print("+", actual_lines[i])
+        raise AssertionError("Unexpected result of rendering Home")
 
 
 def _login_as(driver, test_sub):
