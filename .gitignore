@@ -9,3 +9,4 @@
 /store/webhook_provider/private_keys/test
 /test
 /tmp
+deploy-*.yml
