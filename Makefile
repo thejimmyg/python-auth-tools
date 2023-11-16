@@ -1,5 +1,7 @@
 .PHONY: clean deploy test check format deploy-lambda venv serve
 
+# ./serve/adapter/lambda_function/layer_from_requirements.sh "sudo -E docker" arm64 'cachetools==5.2.0 jwcrypto==1.0 pydantic==1.10.4 pysaml2==7.4.2 xmlsec==1.3.13' xmlsec-arm64.zip "yum update; yum install -y libxml2-devel xmlsec1-devel xmlsec1-openssl-devel libtool-ltdl-devel"
+
 venv:
 	python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt autoflake black mypy cfn-lint
 

@@ -14,18 +14,37 @@ def store_oauth_authorization_server_code_pkce_request_put(
     code: str, code_pkce_request: CodePkceRequest
 ):
     # Allow the code to be valid for 30 seconds
-    driver_key_value_store_put(STORE, code, code_pkce_request, ttl=time.time() + 30)
+    values = code_pkce_request.dict()
+    if values["scopes"]:
+        for scope in values["scopes"]:
+            assert " " not in scope
+        values["scopes"] = " ".join(values["scopes"])
+    # else:
+    #     del values["scopes"]
+    # if values["state"] is None:
+    #     del values["state"]
+    # if values["sub"] is None:
+    #     del values["sub"]
+    driver_key_value_store_put(STORE, code, values, ttl=time.time() + 30)
 
 
 def store_oauth_authorization_server_code_pkce_request_get_and_delete(code: str):
-    result = CodePkceRequest(**driver_key_value_store_get(STORE, code))
     result = store_oauth_authorization_code_pkce_request_get(code)
     driver_key_value_store_del(STORE, code)
     return result
 
 
 def store_oauth_authorization_code_pkce_request_get(code: str):
-    return CodePkceRequest(**driver_key_value_store_get(STORE, code))
+    values = driver_key_value_store_get(STORE, code)
+    if values.get('scopes'):
+        values["scopes"] = [scope for scope in values["scopes"].split(" ") if scope]
+    # else:
+    #     values["scopes"] = None
+    # if "state" not in values:
+    #     values["state"] = None
+    # if "sub" not in values:
+    #     values["sub"] = None
+    return CodePkceRequest(**values)
 
 
 def store_oauth_authorization_server_code_pkce_request_set_sub(code: str, sub: str):

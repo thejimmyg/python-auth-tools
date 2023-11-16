@@ -12,12 +12,12 @@ assert not config_url.endswith("/")
 _parsed_url = urllib.parse.urlparse(config_url)
 config_host = _parsed_url.netloc.split(":")[0]
 config_scheme = _parsed_url.scheme
-if ':' in _parsed_url.netloc:
+if ":" in _parsed_url.netloc:
     config_port = int(":".join(_parsed_url.netloc.split(":")[1:]))
 else:
-    if config_scheme == 'https':
+    if config_scheme == "https":
         config_port = 443
-    elif config_scheme == 'http':
+    elif config_scheme == "http":
         config_port = 80
     else:
-        raise Exception('Unknown scheme:' + str(config_scheme))
+        raise Exception("Unknown scheme:" + str(config_scheme))

@@ -3,7 +3,6 @@
 % python3 driver_key_value_store_sqlite.py
 """
 
-import os
 
 import kvstore.driver
 

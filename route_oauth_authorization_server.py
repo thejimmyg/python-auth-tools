@@ -4,14 +4,10 @@ from threading import RLock
 
 import helper_hooks
 from config import config_url
-from config_oauth_authorization_server import (
-    config_oauth_authorization_server_jwks_json_path,
-)
 from helper_log import helper_log
 from helper_oauth_authorization_server import helper_oauth_authorization_server_sign_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
 from route_oauth_resource_owner_api import apis
-from route_static import route_static
 from store_oauth_authorization_server_client_credentials import (
     store_oauth_authorization_server_client_credentials_get,
 )
@@ -236,8 +232,12 @@ def route_oauth_authorization_server_token(http):
     }
 
 
-with rlock:
-    route_oauth_authorization_server_jwks_json = route_static(
-        config_oauth_authorization_server_jwks_json_path,
-        "application/json; charset=UTF8",
-    )
+from store_oauth_authorization_server_jwks import (
+    store_oauth_authorization_server_jwks_get_and_cache,
+)
+
+
+def route_oauth_authorization_server_jwks_json(http):
+    jwks = store_oauth_authorization_server_jwks_get_and_cache()
+    http.response.body = jwks.encode("UTF8")
+    http.response.headers["Content-Type"] = "application/json; charset=UTF8"

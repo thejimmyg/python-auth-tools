@@ -28,13 +28,11 @@ class IdPConfig:
         return hash(self.entity_id)
 
 
-if get_xmlsec_binary:
-    xmlsec_path = get_xmlsec_binary(["/opt/local/bin", "/usr/local/bin"])
-else:
-    xmlsec_path = "/usr/bin/xmlsec1"
-
-
 def saml_client():
+    if get_xmlsec_binary:
+        xmlsec_path = get_xmlsec_binary(["/opt/local/bin", "/usr/local/bin"])
+    else:
+        xmlsec_path = "/usr/bin/xmlsec1"
     saml_settings = {
         # Currently xmlsec1 binaries are used for all the signing and encryption stuff.This option defines where the binary is situated.
         "xmlsec_binary": xmlsec_path,

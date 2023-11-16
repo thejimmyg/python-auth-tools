@@ -1,49 +1,20 @@
-import json
 import math
-import os
 import urllib.parse
 from datetime import datetime as dt
 
 from jwcrypto import jwk, jwt
 
 from config import config_url
-from config_oauth_authorization_server import (
-    config_oauth_authorization_server_jwks_json_path,
-    config_oauth_authorization_server_private_keys_dir_path,
-)
-from helper_log import helper_log
-
-#
-# Generate Keys
-#
-
-
-def helper_oauth_authorization_server_generate_keys_to_store_dir(kid):
-    key = jwk.JWK.generate(
-        kty="RSA", size=2048, kid=kid, use="sig", e="AQAB", alg="RS256"
-    )
-    private_key = key.export_private()
-    public_key = key.export_public(as_dict=True)
-    helper_log(__file__, "Private key:", private_key)
-    with open(
-        os.path.join(config_oauth_authorization_server_private_keys_dir_path, kid), "w"
-    ) as fp:
-        fp.write(private_key)
-    if os.path.exists(config_oauth_authorization_server_jwks_json_path):
-        with open(config_oauth_authorization_server_jwks_json_path, "r") as fp:
-            jwks = json.loads(fp.read())
-    else:
-        jwks = {"keys": []}
-    jwks["keys"].append(public_key)
-    with open(config_oauth_authorization_server_jwks_json_path, "w") as fp:
-        fp.write(json.dumps(jwks))
-    helper_log(__file__, "jwks.json:", jwks)
 
 
 #
 # Sign
 #
 
+
+from store_oauth_authorization_server_key import (
+    store_oauth_authorization_server_key_get_and_cache,
+)
 
 private_keys = {}
 
@@ -52,11 +23,7 @@ def helper_oauth_authorization_server_sign_jwt(
     client_id, sub, kid, expires_in=600, scopes=None
 ):
     if kid not in private_keys:
-        with open(
-            os.path.join(config_oauth_authorization_server_private_keys_dir_path, kid),
-            "rb",
-        ) as fp:
-            private_keys[kid] = json.loads(fp.read())
+        private_keys[kid] = store_oauth_authorization_server_key_get_and_cache(kid)
     now = math.floor(dt.now().timestamp())
     jwt_claims = {
         "iss": config_url,
