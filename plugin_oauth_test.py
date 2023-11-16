@@ -55,9 +55,10 @@ def plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_sign
 
 
 def plugin_oauth_test_route_oauth_authorization_server_login(http):
-    helper_log(__file__, "In login hook")
+    helper_log(__file__, f"In login hook with request {repr(http.request)}")
     session_id = get_session_id_or_respond_early_not_logged_in(http, "oauth")
     sub = ""
+    helper_log(__file__, f"Session {repr(session_id)}, sub=''")
     if http.request.method == "post":
         form = urllib.parse.parse_qs(
             http.request.body.decode("utf8"),
@@ -70,7 +71,10 @@ def plugin_oauth_test_route_oauth_authorization_server_login(http):
         subs = form.get("sub", [])
         if len(subs) == 1:
             sub = subs[0]
+
+    helper_log(__file__, f"Sub is now {repr(sub)}")
     if http.request.method == "get" or not sub:
+        helper_log(__file__, f"Showing the form")
         # Note we don't really need a CSRF check here because a username and password would really be used to authenticate the request
         form = (
             Html(
@@ -90,8 +94,16 @@ def plugin_oauth_test_route_oauth_authorization_server_login(http):
         )
         http.response.body = Base(title="Login", body=form)
     else:
+        helper_log(__file__, f"Not showing the form, loading the session")
         session = store_session_get(session_id)
+        helper_log(
+            __file__, f"Got {session}, setting sub {sub} into session_id {session_id}"
+        )
         store_session_set_sub(session_id, sub)
+        helper_log(
+            __file__,
+            f"Also setting sub {sub} into code_pkce_request {session.value['code']}",
+        )
         store_oauth_authorization_server_code_pkce_request_set_sub(
             session.value["code"], sub
         )
@@ -102,6 +114,7 @@ def plugin_oauth_test_route_oauth_authorization_server_login(http):
 
 
 def plugin_oauth_test_route_oauth_authorization_server_consent(http):
+    helper_log(__file__, "In consent")
     session_id, session = get_session_or_respond_early_not_logged_in(http, "oauth")
     try:
         code_pkce_request = store_oauth_authorization_code_pkce_request_get(
