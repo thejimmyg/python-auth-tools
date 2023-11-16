@@ -3,8 +3,6 @@ Steps:
 
 * Render the dashboard page with the JWT in it, don't just return text
 * Create a session store [key]: JSON
-* Set the session cookie http_only, secure unless http.request.headers['host'] starts with http and DEV_MODE=true
-* 
 """
 
 import json
@@ -26,7 +24,7 @@ from store_oauth_code_pkce_code_verifier import (
 # def session_from_cookie(http):
 #     http.response.status = "401 Not logged in"
 #     http.response.body = "Not logged in"
-#     raise RespondEarly()
+#     raise http.response.RespondEarly()
 #
 #
 # def start_session(http):

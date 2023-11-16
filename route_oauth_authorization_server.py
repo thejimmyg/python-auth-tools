@@ -200,7 +200,8 @@ def route_oauth_authorization_server_token(http):
         code_pkce_request = (
             store_oauth_authorization_server_code_pkce_request_get_and_delete(code)
         )
-        if code_pkce_request.sub is None or code_pkce_request.scopes is None:
+        # print("===========", code, code_verifier, code_pkce_request)
+        if not code_pkce_request.sub:  # or not code_pkce_request.scopes:
             raise Exception("Not completed auth flow before trying to get token")
         client_id = code_pkce_request.client_id
         code_challenge = code_pkce_request.code_challenge

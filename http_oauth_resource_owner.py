@@ -1,6 +1,5 @@
 import traceback
 
-from helper_http import RespondEarly
 from helper_log import helper_log
 from helper_oauth_resource_owner import helper_oauth_resource_owner_verify_jwt
 
@@ -16,4 +15,4 @@ def http_oauth_resource_owner_verify_jwt_and_return_claims(http):
         helper_log(__file__, "Handling auth ERROR:", traceback.format_exc())
         http.response.status = "401 Not Authenticated"
         http.response.body = "401 Not Authenticated"
-        raise RespondEarly(str(e))
+        raise http.response.RespondEarly(str(e))

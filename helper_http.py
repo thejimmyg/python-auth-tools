@@ -15,14 +15,19 @@ This module does a few things for us:
 import json
 import traceback
 import uuid
-
-from pydantic import BaseModel
+import dataclasses
 
 from helper_log import helper_log
 from render import Base, Html
 
 
-class Request(BaseModel):
+# Not to be used directly, use http.response.RespondEarly instead
+class RespondEarly(Exception):
+    pass
+
+
+@dataclasses.dataclass
+class Request:
     path: str
     query: None | str
     headers: dict
@@ -30,13 +35,16 @@ class Request(BaseModel):
     body: None | bytes
 
 
-class Response(BaseModel):
+@dataclasses.dataclass
+class Response:
     status: str
     headers: dict
     body: None | bytes
+    RespondEarly: RespondEarly
 
 
-class Http(BaseModel):
+@dataclasses.dataclass
+class Http:
     request: Request
     response: Response
     context: dict
@@ -55,7 +63,9 @@ def helper_http_handle(routes, method, path, query, request_headers, request_bod
         method=method.lower(),
         body=request_body,
     )
-    response = Response(status="200 OK", headers={}, body=None)
+    response = Response(
+        status="200 OK", headers={}, body=None, RespondEarly=RespondEarly
+    )
     http = Http(request=request, response=response, context=dict(uid=uuid.uuid4()))
     request_path = http.request.path
     # assert request_path != '*' # Actually it can be * because this will just call the same thing as the * route anyway

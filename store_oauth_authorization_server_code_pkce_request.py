@@ -19,12 +19,12 @@ def store_oauth_authorization_server_code_pkce_request_put(
         for scope in values["scopes"]:
             assert " " not in scope
         values["scopes"] = " ".join(values["scopes"])
-    # else:
-    #     del values["scopes"]
-    # if values["state"] is None:
-    #     del values["state"]
-    # if values["sub"] is None:
-    #     del values["sub"]
+    else:
+        del values["scopes"]
+    if values["state"] is None:
+        del values["state"]
+    if values["sub"] is None:
+        del values["sub"]
     driver_key_value_store_put(STORE, code, values, ttl=time.time() + 30)
 
 
@@ -36,7 +36,7 @@ def store_oauth_authorization_server_code_pkce_request_get_and_delete(code: str)
 
 def store_oauth_authorization_code_pkce_request_get(code: str):
     values = driver_key_value_store_get(STORE, code)
-    if values.get('scopes'):
+    if values.get("scopes"):
         values["scopes"] = [scope for scope in values["scopes"].split(" ") if scope]
     # else:
     #     values["scopes"] = None

@@ -44,7 +44,6 @@ def make_app(routes):
             http.response.body = b"500 Error"
             helper_log(__file__, "ERROR:", traceback.format_exc())
         # _canonicalize_response(http)
-        return http
 
     # def _canonicalize_response(http):
     #     response_body_changed = False

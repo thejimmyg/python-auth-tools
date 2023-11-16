@@ -2,7 +2,6 @@ from http import cookies
 
 from config import config_host, config_scheme
 from error import NotFound
-from helper_http import RespondEarly
 from helper_pkce import helper_pkce_code_verifier
 from route_error import route_error_not_logged_in
 from store_session import store_session_get
@@ -34,7 +33,7 @@ def _default_cookie_settings(http, c):
     # Can't use the port here https://datatracker.ietf.org/doc/html/rfc2109.html#section-2
     c["domain"] = config_host
     c["max-age"] = 3600
-    c["secure"] = config_scheme == "https://"
+    c["secure"] = config_scheme == "https"
     c["version"] = 1
     c["httponly"] = True
     c["samesite"] = "Strict"
@@ -69,7 +68,7 @@ def get_session_id_or_respond_early_not_logged_in(http, name):
         return http_session_id(http, name)
     except NotFound as e:
         route_error_not_logged_in(http)
-        raise RespondEarly(str(e))
+        raise http.response.RespondEarly(str(e))
 
 
 def get_session_or_respond_early_not_logged_in(http, name):
@@ -79,4 +78,4 @@ def get_session_or_respond_early_not_logged_in(http, name):
         return session_id, session
     except NotFound as e:
         route_error_not_logged_in(http)
-        raise RespondEarly(str(e))
+        raise http.response.RespondEarly(str(e))
