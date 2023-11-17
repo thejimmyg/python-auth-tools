@@ -10,7 +10,7 @@ Parameters:
     Description: DynamoDB table name
     Type: String
     MinLength: "1"
-    Default: "Auth"
+    Default: "Table"
 
   HostedZoneId:
     Description: Hosted Zone ID of the domain, for certificate verification and for API Gateway records
@@ -46,7 +46,9 @@ Resources:
       Parameters:
         Layers: !Ref Layers
         ReservedConcurrency: !Ref ReservedConcurrency
-        EncodedEnvironment: !Sub 'KVSTORE_DYNAMODB_TABLE_NAME|${DynamoTable}'
+        DynamoDbTableArn: !GetAtt DynamoDbTable.Arn
+        DynamoDbTableName: !Sub '${AWS::StackName}-${TableName}'
+        EncodedEnvironment: !Sub 'URL|https://${Domain}'
 
   CertificateStack:
     Type: AWS::CloudFormation::Stack
@@ -76,7 +78,7 @@ Resources:
         V1Stage: !GetAtt ApiGatewayStack.Outputs.V1Stage
       TemplateURL: serve/adapter/lambda_function/stack-api-gateway-domain.yml
 
-  DynamoTable:
+  DynamoDbTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: !Sub '${AWS::StackName}-${TableName}'
@@ -110,7 +112,7 @@ Resources:
               - dynamodb:UpdateItem
               - dynamodb:DeleteItem
             Resource:
-              - !GetAtt DynamoTable.Arn
+              - !GetAtt DynamoDbTable.Arn
 
       # Define the role here, rather than the managed policy on the role, to avoid a circular dependency
       Roles:
