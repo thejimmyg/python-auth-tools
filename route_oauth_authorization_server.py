@@ -145,18 +145,21 @@ def route_oauth_authorization_server_token(http):
     http.response.headers["cache-control"] = "no-store"
     http.response.headers["pragma"] = "no-cache"
     q = urllib.parse.parse_qs(
-        http.request.query,
+        # XXX Should check the method based on the grant_type
+        http.request.method.lower() == "get"
+        and http.request.query
+        or http.request.body.decode("UTF8"),
         keep_blank_values=False,
         strict_parsing=True,
         encoding="utf-8",
         max_num_fields=10,
         separator="&",
     )
-    assert len(q) >= 1, "Unexpected query string length"
+    assert len(q) >= 1, "No token params sent"
     assert "grant_type" in q
     assert len(q["grant_type"]) == 1
     grant_type = q["grant_type"][0]
-    assert grant_type in ["client_credentials", "code"]
+    assert grant_type in ["client_credentials", "authorization_code"]
 
     if grant_type == "client_credentials":
         # http.request.query != 'grant_type=client_credentials':
@@ -190,7 +193,7 @@ def route_oauth_authorization_server_token(http):
             assert (
                 scope in allowed_scopes
             ), "Scope is available in the app but not allowed in the client credentials client"
-    elif grant_type == "code":
+    elif grant_type == "authorization_code":
         assert "code" in q
         assert len(q["code"]) == 1
         assert "code_verifier" in q

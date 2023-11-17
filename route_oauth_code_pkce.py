@@ -7,8 +7,8 @@ Steps:
 
 import json
 import urllib.parse
-
 import helper_hooks
+from urllib.request import urlopen, Request
 from config import config_url
 from helper_log import helper_log
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
@@ -50,24 +50,29 @@ def route_oauth_code_pkce_callback(http):
         q["state"][0]
     ).code_verifier
     code = q["code"][0]
-    token_url = (
-        config_url
-        + "/oauth/token?code_verifier="
+
+    # https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
+
+    data = (
+        "client_id="
+        + urllib.parse.quote("client")  # XXX This should be dynamic
+        + "&code_verifier="
         + urllib.parse.quote(code_verifier)
         + "&code="
         + urllib.parse.quote(code)
-        + "&grant_type=code"
-    )
-    # http.response.status = '302 Redirect'
-    # http.response.headers['location'] = token_url
-    # http.response.body = b'Redirecting ...'
+        + "&grant_type=authorization_code"
+    ).encode("utf8")
 
-    # XXX Make this spec-compliant
     try:
-        helper_log(__file__, "URL:", token_url)
-        with urllib.request.urlopen(token_url) as fp:
+        config_token_url = config_url + "/oauth/token"
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        helper_log(__file__, "URL:", config_token_url, data, "POST", headers)
+        with urlopen(
+            Request(config_token_url, data=data, method="POST", headers=headers)
+        ) as fp:
             response = json.loads(fp.read())
-            assert response["token_type"] == "bearer"
+            print(response)
+            assert response["token_type"].lower() == "bearer"
             helper_hooks.hooks["oauth_code_pkce_on_success"](http, response)
     except urllib.error.HTTPError as e:
         helper_log(__file__, "ERROR:", e.read().decode())

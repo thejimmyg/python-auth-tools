@@ -95,10 +95,10 @@ Resources:
         AttributeName: ttl
         Enabled: true
 
-  TasksLambdaDynamoPolicy:
+  HttpLambdaDynamoPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub '${AWS::StackName}-TasksLambdaDynamoPolicy'
+      ManagedPolicyName: !Sub '${AWS::StackName}-HttpLambdaDynamoPolicy'
       Description: Managed policy for the Lambda function
       PolicyDocument:
         Version: "2012-10-17"
