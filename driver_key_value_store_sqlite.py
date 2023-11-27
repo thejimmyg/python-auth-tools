@@ -36,12 +36,5 @@ def driver_key_value_store_sqlite_del(store: str, key: str):
 
 
 def driver_key_value_store_sqlite_get(store: str, key: str):
-    results, next_ = kvstore.driver.iterate(store=store, pk=key, consistent=True)
-    # Maybe 1MB was expired data, let's just try once more
-    # if len(results) == 0 and next_ is not None:
-    #     results, next_ = kvstore.driver.iterate(store=store, pk=key, consistent=True, sk_start=next_, after=True)
-    assert len(results) == 1, results
-    assert next_ is None
-    sk, result, ttl = results[0]
-    assert sk == "/", sk
+    result, ttl = kvstore.driver.get(store=store, pk=key, consistent=True)
     return result
