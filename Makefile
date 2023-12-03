@@ -1,4 +1,4 @@
-.PHONY: clean deploy test check format deploy-lambda venv serve
+.PHONY: clean deploy test check format deploy-lambda venv serve check-python
 
 # ./serve/adapter/lambda_function/layer_from_requirements.sh "sudo -E docker" arm64 'cachetools==5.2.0 jwcrypto==1.0 pydantic==1.10.4 pysaml2==7.4.2 xmlsec==1.3.13' xmlsec-arm64.zip "yum update; yum install -y libxml2-devel xmlsec1-devel xmlsec1-openssl-devel libtool-ltdl-devel"
 
@@ -8,12 +8,15 @@ venv:
 deploy:
 	@echo "Did you mean 'make deploy-lambda'?"
 
-check:
+check-python:
+	# Fails becauase of duplicate app_everything
 	# .venv/bin/mypy --check-untyped-defs .
+
+check: check-python
 	.venv/bin/cfn-lint -i W3002 -- \
 	  stack-deploy-lambda.template
 
-test: clean
+test: clean check-python
 	PATH="${PWD}:${PATH}" STORE_DIR=/tmp/store SAML_SP_SLACK_SECONDS='3' python3 test.py cli_serve_wsgi.py
 
 format: format-python format-cfn

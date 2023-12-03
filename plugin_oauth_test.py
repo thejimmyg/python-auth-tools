@@ -34,14 +34,20 @@ from store_session import (
 def plugin_oauth_test_hook_oauth_code_pkce_on_success(http, response):
     access_token = response["access_token"]
     helper_log(__file__, "Access token:", access_token)
-    http.response.body = Base(
-        title="Success!",
-        body=Html(
-            """<p>Successfully logged in. Here's the access token: <span id="jwt">"""
-        )
+    body = (
+        Html("""<p>Successfully logged in. Here's the access token: <span id="jwt">""")
         + access_token
-        + Html("</span></p>"),
+        + Html("</span></p>")
     )
+    if "refresh_token" in response:
+        refresh_token = response["refresh_token"]
+        helper_log(__file__, "Refresh token:", refresh_token)
+        body += (
+            Html('<p>And the refresh token: <span id="refresh">')
+            + refresh_token
+            + Html("</span></p>")
+        )
+    http.response.body = Base(title="Success!", body=body)
 
 
 def plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in(

@@ -221,6 +221,7 @@ def test_render():
       <p>
         <a href="/oauth-code-pkce/login">Login without scopes</a>,
         <a href="/oauth-code-pkce/login?scope=read">login with read scope</a>,
+        <a href="/oauth-code-pkce/login?scope=read%20offline_access">login with read and offline access scopes</a>,
         <a href="/oauth-code-pkce/login?scope=no-such-scope">login with an invalid scope</a>,
         <a href="/saml2/login/">login with SAML</a>.
       </p>
@@ -259,6 +260,11 @@ def _check_jwt(now, url, test_sub):
     assert claims["iss"] == url
     assert claims["sub"] == test_sub
     return jwt, claims
+
+
+def _check_refresh():
+    elem = driver.find_element(By.ID, "refresh")
+    return elem.text
 
 
 def oauth_code_pkce_browser(driver, url):
@@ -300,6 +306,34 @@ def oauth_code_pkce_browser_read_scope(driver, url):
     elem = driver.find_element(By.NAME, "approve")
     elem.click()
     return _check_jwt(now, url, test_sub)
+
+
+def oauth_code_pkce_browser_read_and_offline_access_scopes(driver, url):
+    print()
+    print("Browser test code pkce read and offline access scopes", url)
+    driver.get(url + "/")
+    assert "OAuth Client Home" in driver.title
+    elem = driver.find_element(
+        By.LINK_TEXT, "login with read and offline access scopes"
+    )
+    elem.click()
+
+    now = math.floor(time.time())  # Round down
+    test_sub = "test_sub_{}".format(now)
+    _login_as(driver, test_sub)
+
+    elem = driver.find_element(By.ID, "consent-msg")
+    assert (
+        elem.text
+        == "The page at {url}/oauth-code-pkce/callback is asking for the following permissions to your data:".format(
+            url=url
+        )
+    ), elem.text
+    elem = driver.find_element(By.NAME, "approve")
+    elem.click()
+    refresh = _check_refresh()
+    jwt, claims = _check_jwt(now, url, test_sub)
+    return jwt, claims, test_sub, refresh
 
 
 def oauth_code_pkce_browser_already_logged_in(driver, url, test_sub):
@@ -398,11 +432,11 @@ def make_authenticated_request_to_oauth_resource_owner(url, token, expect_sub=Tr
         print(response)
         assert list(response.keys()) == ["claims"], response.keys()
         # This doesn't match because iat and exp will be different.
-        # assert json.dumps(response) == json.dumps({'claims': '{"aud": "client", "exp": 1690967312, "iat": 1690966712, "iss": "http://localhost:16001", "scope": "read", "sub": "sub"}'})
+        # assert json.dumps(response) == json.dumps({'claims': '{"aud": "client", "exp": 1690967312, "iat": 1690966712, "iss": "http://localhost:16001", "scope": "read offline_access", "sub": "sub"}'})
         claims = json.loads(response["claims"])
         assert claims["aud"] == "client"
         assert claims["iss"] == url
-        assert claims["scope"] == "read"
+        assert claims["scope"] == "read offline_access", claims["scope"]
         if expect_sub:
             assert claims["sub"] == "sub"
 
@@ -436,7 +470,7 @@ def exec_cli_oauth_authorization_server_code_pkce_put(env, url):
             "app_test",
             "client",
             url + "/oauth-code-pkce/callback",
-            "read",
+            "read offline_access",
         ],
         env=env,
     )
@@ -453,7 +487,7 @@ def exec_cli_oauth_authorization_server_client_credentials_put(env):
             "app_test",
             "client",
             "secret",
-            "read",
+            "read offline_access",
         ],
         env=env,
     )
@@ -554,7 +588,7 @@ def exec_cli_oauth_authorization_server_sign_jwt(env, kid):
             "app_test",
             "client",
             "sub",
-            "read",
+            "read offline_access",
             kid,
         ],
         stdout=subprocess.PIPE,
@@ -586,6 +620,7 @@ def exec_cli_oauth_client_credentials(env, client, secret, scopes):
     assert process.wait() == 0
     print(stdout)
     response = json.loads(stdout.decode("utf8").strip())
+    # https://www.rfc-editor.org/rfc/rfc6749#section-4.4.3 Should not include a refresh token even though we passed the offline_access scope
     assert sorted(list(response.keys())) == ["access_token", "expires_in", "token_type"]
     assert response["expires_in"] == 600
     assert response["token_type"] == "bearer"
@@ -684,11 +719,11 @@ if __name__ == "__main__":
     #   "exp": 1691075255,
     #   "iat": 1691074655,
     #   "iss": "http://localhost:61022",
-    #   "scope": "read",
+    #   "scope": "read offline_access",
     #   "sub": "sub"
     # }
     oauth_client_credentials_token = exec_cli_oauth_client_credentials(
-        env, "client", "secret", ["read"]
+        env, "client", "secret", ["read", "offline_access"]
     )
     exec_cli_oauth_resource_owner_verify_jwt(env, oauth_client_credentials_token)
     try:
@@ -728,6 +763,35 @@ if __name__ == "__main__":
         pass
     else:
         raise Exception("Invalid signature failed to raise an exception")
+
+    # Refresh token
+    driver = webdriver.Chrome()
+    (
+        jwt,
+        claims,
+        test_sub,
+        refresh,
+    ) = oauth_code_pkce_browser_read_and_offline_access_scopes(driver, url)
+    print(jwt, claims, test_sub, refresh)
+    assert (
+        "." in refresh
+        and len(refresh.split(".")[1]) == 64  # Current
+        and len(refresh.split(".")[0]) == 63  # Family
+    ), refresh
+    driver.close()
+
+    print(jwt, refresh)
+    # Check we can issue a new access token and refresh token
+    request = urllib.request.Request(
+        url + "/oauth/token",
+        method="POST",
+        data=urllib.parse.urlencode(
+            {"grant_type": "refresh_token", "refresh_token": refresh}
+        ).encode("UTF-8"),
+    )
+    with urllib.request.urlopen(request) as fp:
+        response = fp.read()
+        print(response)
 
     driver = webdriver.Chrome()
     browser_jwt, browser_claims, test_sub = oauth_code_pkce_browser(driver, url)

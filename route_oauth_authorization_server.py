@@ -1,4 +1,5 @@
 import base64
+import time
 import urllib.parse
 from threading import RLock
 
@@ -23,10 +24,26 @@ from store_oauth_authorization_server_keys_current import (
     store_oauth_authorization_server_keys_current_get_and_cache,
 )
 
+from pydantic import BaseModel
+
+from driver_key_value_store import (
+    driver_key_value_store_get,
+    driver_key_value_store_put,
+)
+
+
+class RefreshTokenFamily(BaseModel):
+    client_id: str
+    sub: str
+    scopes_str: str
+
+
+REFRESH_STORE = "oauth_authorization_server_refresh"
+
 rlock = RLock()
 
 with rlock:
-    available_scopes = []
+    available_scopes = ["offline_access"]
     for api in apis:
         for required_scope in apis[api][1]:
             if required_scope not in available_scopes:
@@ -159,7 +176,32 @@ def route_oauth_authorization_server_token(http):
     assert "grant_type" in q
     assert len(q["grant_type"]) == 1
     grant_type = q["grant_type"][0]
-    assert grant_type in ["client_credentials", "authorization_code"]
+    assert grant_type in ["client_credentials", "authorization_code", "refresh_token"]
+    expires_in = 600
+    if grant_type == "refresh_token":
+        assert "refresh_token" in q, q
+        assert len(q["refresh_token"]) == 1, q["refresh_token"]
+        assert "." in q["refresh_token"][0], q["refresh_token"][0]
+        refresh_token = q["refresh_token"][0]
+        family, _ = refresh_token.split(".")
+        # 1, Check refresh token is known
+        driver_key_value_store_get(REFRESH_STORE, "/token/" + refresh_token)
+        # 2. Check refresh token family still exists <- Actually, the fresh token data could be with the family?
+        refresh_token_family = RefreshTokenFamily(
+            **driver_key_value_store_get(REFRESH_STORE, "/family/" + family)
+        )
+
+        # Note: https://datatracker.ietf.org/doc/html/rfc6749#section-6 Refresh token client and scopes cannot change
+        http.response.status = "200 OK"
+        http.response.body = issue(
+            client_id=refresh_token_family.client_id,
+            sub=refresh_token_family.sub,
+            expires_in=expires_in,
+            scopes=refresh_token_family.scopes_str.split(" "),
+            grant_type=grant_type,
+            token_family=family,
+        )
+        return
 
     if grant_type == "client_credentials":
         # http.request.query != 'grant_type=client_credentials':
@@ -221,9 +263,13 @@ def route_oauth_authorization_server_token(http):
         )
         # This is the key check - if the code_challenge we recieved at the start can be generated from this code verifier, it is the same client and we can issue a token.
         assert helper_pkce_code_challenge(code_verifier) == code_challenge
-    expires_in = 600
+    assert scopes is None or isinstance(scopes, list), scopes
     http.response.status = "200 OK"
-    http.response.body = {
+    http.response.body = issue(client_id, sub, expires_in, scopes, grant_type)
+
+
+def issue(client_id, sub, expires_in, scopes, grant_type, token_family=None):
+    response = {
         "access_token": helper_oauth_authorization_server_sign_jwt(
             client_id=client_id,
             sub=sub,
@@ -234,6 +280,32 @@ def route_oauth_authorization_server_token(http):
         "token_type": "bearer",
         "expires_in": expires_in,
     }
+    if (
+        grant_type in ["authorization_code", "refresh_token"]
+        and scopes is not None
+        and "offline_access" in scopes
+    ):
+        refresh_family_expires_in = 60 * 60 * 24
+        if token_family is None:
+            token_family = helper_pkce_code_verifier()[:63]
+            driver_key_value_store_put(
+                store=REFRESH_STORE,
+                key="/family/" + token_family,
+                value=RefreshTokenFamily(
+                    client_id=client_id, sub=sub, scopes_str=" ".join(scopes)
+                ),
+                ttl=time.time() + refresh_family_expires_in,
+            )
+        refresh_token_current = helper_pkce_code_verifier()[:64]
+        refresh_token = f"{token_family}.{refresh_token_current}"
+        driver_key_value_store_put(
+            store=REFRESH_STORE,
+            key="/token/" + refresh_token,
+            value={},
+            ttl=time.time() + expires_in,
+        )
+        response["refresh_token"] = refresh_token
+    return response
 
 
 from store_oauth_authorization_server_jwks import (

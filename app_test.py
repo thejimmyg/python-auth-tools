@@ -46,6 +46,7 @@ class Home(Base):
       <p>
         <a href="/oauth-code-pkce/login">Login without scopes</a>,
         <a href="/oauth-code-pkce/login?scope=read">login with read scope</a>,
+        <a href="/oauth-code-pkce/login?scope=read%20offline_access">login with read and offline access scopes</a>,
         <a href="/oauth-code-pkce/login?scope=no-such-scope">login with an invalid scope</a>,
         <a href="/saml2/login/">login with SAML</a>.
       </p>"""
