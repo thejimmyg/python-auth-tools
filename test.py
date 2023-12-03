@@ -781,17 +781,96 @@ if __name__ == "__main__":
     driver.close()
 
     print(jwt, refresh)
+
     # Check we can issue a new access token and refresh token
-    request = urllib.request.Request(
-        url + "/oauth/token",
-        method="POST",
-        data=urllib.parse.urlencode(
-            {"grant_type": "refresh_token", "refresh_token": refresh}
-        ).encode("UTF-8"),
+    def grant_refresh_token(refresh_token):
+        request = urllib.request.Request(
+            url + "/oauth/token",
+            method="POST",
+            data=urllib.parse.urlencode(
+                {"grant_type": "refresh_token", "refresh_token": refresh_token}
+            ).encode("UTF-8"),
+        )
+        with urllib.request.urlopen(request) as fp:
+            response = json.loads(fp.read())
+            print(response)
+        return response
+
+    jwt_claims = helper_oauth_resource_owner_verify_jwt(jwt)
+    print(jwt_claims)
+    assert jwt_claims["aud"] == "client", jwt_claims
+    assert jwt_claims["iss"] == url, (jwt_claims, url)
+
+    # Need to wait 1 second for the issued token to be different (iat and exp will be different)
+    time.sleep(1.1)
+    response1 = grant_refresh_token(refresh)
+    assert list(sorted(response1.keys())) == [
+        "access_token",
+        "expires_in",
+        "refresh_token",
+        "token_type",
+    ], response1
+    assert response1["expires_in"] == 600, response1["expires_in"]
+    # https://datatracker.ietf.org/doc/html/rfc6749#section-7.1
+    assert response1["token_type"] == "bearer", response1["token_type"]
+    assert response1["refresh_token"].split(".")[0] == refresh.split(".")[0], (
+        refresh,
+        response1,
     )
-    with urllib.request.urlopen(request) as fp:
-        response = fp.read()
-        print(response)
+    assert response1["refresh_token"].split(".")[1] != refresh.split(".")[1], (
+        refresh,
+        response1,
+    )
+    assert response1["access_token"] != jwt, (response1["access_token"], jwt)
+    claims1 = helper_oauth_resource_owner_verify_jwt(response1["access_token"])
+    print(claims1)
+    # {'aud': 'client', 'exp': 1701626091, 'iat': 1701625491, 'iss': 'http://localhost:58326', 'scope': 'read offline_access', 'sub': 'test_sub_1701625490'}
+
+    assert claims1["scope"] == jwt_claims["scope"], claims1
+    assert claims1["aud"] == jwt_claims["aud"], claims1
+    assert claims1["iss"] == jwt_claims["iss"], claims1
+    assert claims1["sub"] == jwt_claims["sub"], claims1
+    assert claims1["exp"] > jwt_claims["iat"], claims1
+    assert claims1["exp"] > jwt_claims["exp"], claims1
+
+    # Need to wait 1 second for the issued token to be different (iat and exp will be different)
+    time.sleep(1.1)
+    response2 = grant_refresh_token(response1["refresh_token"])
+    assert list(sorted(response2.keys())) == [
+        "access_token",
+        "expires_in",
+        "refresh_token",
+        "token_type",
+    ], response2
+    assert response2["expires_in"] == 600, response2["expires_in"]
+    assert response2["token_type"] == "bearer", response2["token_type"]
+    assert response2["refresh_token"].split(".")[0] == refresh.split(".")[0], (
+        refresh,
+        response2,
+    )
+    assert (
+        response2["refresh_token"].split(".")[1]
+        != response1["refresh_token"].split(".")[1]
+    ), (
+        response1["refresh_token"],
+        response2,
+    )
+    assert response2["refresh_token"].split(".")[1] != refresh.split(".")[1], (
+        refresh,
+        response2,
+    )
+    assert response2["access_token"] != jwt, (response2["access_token"], jwt)
+    assert response2["access_token"] != response1["access_token"], (
+        response2["access_token"],
+        response1["access_token"],
+    )
+    claims2 = helper_oauth_resource_owner_verify_jwt(response2["access_token"])
+    assert claims2["scope"] == jwt_claims["scope"], claims2
+    assert claims2["aud"] == jwt_claims["aud"], claims2
+    assert claims2["iss"] == jwt_claims["iss"], claims2
+    assert claims2["sub"] == jwt_claims["sub"], claims2
+    assert claims2["exp"] > claims1["exp"], (claims2, claims1)
+    assert claims2["iat"] > claims1["iat"], (claims2, claims1)
 
     driver = webdriver.Chrome()
     browser_jwt, browser_claims, test_sub = oauth_code_pkce_browser(driver, url)
