@@ -2,13 +2,10 @@ if __name__ == "__main__":
     import sys
 
     from helper_hooks import helper_hooks_setup
-
-    hook_module_path = sys.argv[1]
-    helper_hooks_setup(hook_module_path)
+    from helper_log import helper_log
 
     import json
     from jwcrypto import jwk
-    from helper_log import helper_log
 
     from kvstore.driver import NotFound
 
@@ -20,6 +17,8 @@ if __name__ == "__main__":
         store_oauth_authorization_server_jwks_get,
     )
 
+    hook_module_path = sys.argv[1]
+    helper_hooks_setup(hook_module_path)
     kid = sys.argv[2]
     key = jwk.JWK.generate(
         kty="RSA", size=2048, kid=kid, use="sig", e="AQAB", alg="RS256"
