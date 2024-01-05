@@ -11,13 +11,13 @@ from plugin_oauth_test import (
 from render import Base, Html
 from route_error import route_error_not_found
 from route_oauth_authorization_server import (
-    route_oauth_authorization_server_authorize,
+    make_route_oauth_authorization_server_authorize,
     route_oauth_authorization_server_jwks_json,
     route_oauth_authorization_server_openid_configuration,
     route_oauth_authorization_server_token,
 )
 from route_oauth_code_pkce import (
-    route_oauth_code_pkce_callback,
+    make_route_oauth_code_pkce_callback,
     route_oauth_code_pkce_login,
 )
 from route_oauth_resource_owner import (
@@ -65,14 +65,16 @@ hooks = helper_hooks.hooks = {
         "/.well-known/webhook-provider-jwks.json": route_webhook_provider_jwks_json,
         "/.well-known/openid-configuration": route_oauth_authorization_server_openid_configuration,
         "/oauth-code-pkce/login": route_oauth_code_pkce_login,
-        "/oauth-code-pkce/callback": route_oauth_code_pkce_callback,
-        "/oauth/authorize": route_oauth_authorization_server_authorize,
+        "/oauth-code-pkce/callback": make_route_oauth_code_pkce_callback(
+            oauth_code_pkce_on_success=plugin_oauth_test_hook_oauth_code_pkce_on_success
+        ),
+        "/oauth/authorize": make_route_oauth_authorization_server_authorize(
+            oauth_authorization_server_on_authorize_when_not_signed_in=plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
+            oauth_authorization_server_is_signed_in=plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
+            oauth_authorization_server_on_save_code=plugin_oauth_test_hook_oauth_authorization_server_on_save_code,
+        ),
         "/oauth/login": plugin_oauth_test_route_oauth_authorization_server_login,
         "/oauth/consent": plugin_oauth_test_route_oauth_authorization_server_consent,
         "/oauth/token": route_oauth_authorization_server_token,
     },
-    "oauth_code_pkce_on_success": plugin_oauth_test_hook_oauth_code_pkce_on_success,
-    "oauth_authorization_server_on_authorize_when_not_signed_in": plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
-    "oauth_authorization_server_is_signed_in": plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
-    "oauth_authorization_server_on_save_code": plugin_oauth_test_hook_oauth_authorization_server_on_save_code,
 }

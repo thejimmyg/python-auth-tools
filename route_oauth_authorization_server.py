@@ -2,7 +2,6 @@ import base64
 import urllib.parse
 from threading import RLock
 
-import helper_hooks
 from config import config_url
 from helper_log import helper_log
 from helper_oauth_authorization_server import helper_oauth_authorization_server_sign_jwt
@@ -66,76 +65,77 @@ def _get_scopes(q):
     return scopes
 
 
-def route_oauth_authorization_server_authorize(http):
-    # helper_log(__file__, http.request.query)
-    q = urllib.parse.parse_qs(
-        http.request.query,
-        keep_blank_values=False,
-        strict_parsing=True,
-        encoding="utf-8",
-        max_num_fields=10,
-        separator="&",
-    )
-    assert len(q) >= 5, "Unexpected query string length"
-    assert len(q["response_type"]) == 1
-    assert q["response_type"][0] == "code", "response_type != code"
-    assert len(q["code_challenge_method"]) == 1
-    assert q["code_challenge_method"][0] == "S256", "code_challenge_method != S256"
-    assert len(q["code_challenge"]) == 1
-    assert len(q["client_id"]) == 1
-    client_id = q["client_id"][0]
-    client = store_oauth_authorization_server_code_pkce_get(client_id)
-    scopes = _get_scopes(q)
-    # XXX Assert scopes are allowed in the client
-    assert client.scopes, client.scopes
-    state = None
-    if "state" in q:
-        assert len(q["state"]) == 1
-        state = q["state"][0]
-    new_code = helper_pkce_code_verifier()
-    is_signed_in, sub, context = helper_hooks.hooks[
-        "oauth_authorization_server_is_signed_in"
-    ](http)
-    if is_signed_in:
-        assert sub
-        code_pkce_request = CodePkceRequest(
-            client_id=client_id,
-            code_challenge=q["code_challenge"][0],
-            scopes=scopes,
-            state=state,
-            sub=sub,  # Can be None to start with, it should be updated later if it is.
+def make_route_oauth_authorization_server_authorize(
+    oauth_authorization_server_is_signed_in,
+    oauth_authorization_server_on_save_code,
+    oauth_authorization_server_on_authorize_when_not_signed_in,
+):
+    def route_oauth_authorization_server_authorize(http):
+        # helper_log(__file__, http.request.query)
+        q = urllib.parse.parse_qs(
+            http.request.query,
+            keep_blank_values=False,
+            strict_parsing=True,
+            encoding="utf-8",
+            max_num_fields=10,
+            separator="&",
         )
-        helper_hooks.hooks["oauth_authorization_server_on_save_code"](
-            http, context, new_code
-        )
-        store_oauth_authorization_server_code_pkce_request_put(
-            new_code, code_pkce_request
-        )
-        # We can redirect straight to the consent code
-        http.response.status = "302 Redirect"
-        http.response.headers["location"] = "/oauth/consent"
-        http.response.body = "Redirecting ..."
-        helper_log(__file__, "Redirecting to", "/oauth/consent")
-        return
-    else:
-        helper_log(
-            __file__,
-            "Not signed in, preparing code PKCE request without sub, and triggering login hook",
-        )
-        code_pkce_request = CodePkceRequest(
-            client_id=client_id,
-            code_challenge=q["code_challenge"][0],
-            scopes=scopes,
-            state=state,
-            sub=None,
-        )
-        store_oauth_authorization_server_code_pkce_request_put(
-            new_code, code_pkce_request
-        )
-        # Start a login flow
-        helper_hooks.hooks[
-            "oauth_authorization_server_on_authorize_when_not_signed_in"
-        ](http, new_code)
+        assert len(q) >= 5, "Unexpected query string length"
+        assert len(q["response_type"]) == 1
+        assert q["response_type"][0] == "code", "response_type != code"
+        assert len(q["code_challenge_method"]) == 1
+        assert q["code_challenge_method"][0] == "S256", "code_challenge_method != S256"
+        assert len(q["code_challenge"]) == 1
+        assert len(q["client_id"]) == 1
+        client_id = q["client_id"][0]
+        client = store_oauth_authorization_server_code_pkce_get(client_id)
+        scopes = _get_scopes(q)
+        # XXX Assert scopes are allowed in the client
+        assert client.scopes, client.scopes
+        state = None
+        if "state" in q:
+            assert len(q["state"]) == 1
+            state = q["state"][0]
+        new_code = helper_pkce_code_verifier()
+        is_signed_in, sub, context = oauth_authorization_server_is_signed_in(http)
+        if is_signed_in:
+            assert sub
+            code_pkce_request = CodePkceRequest(
+                client_id=client_id,
+                code_challenge=q["code_challenge"][0],
+                scopes=scopes,
+                state=state,
+                sub=sub,  # Can be None to start with, it should be updated later if it is.
+            )
+            oauth_authorization_server_on_save_code(http, context, new_code)
+            store_oauth_authorization_server_code_pkce_request_put(
+                new_code, code_pkce_request
+            )
+            # We can redirect straight to the consent code
+            http.response.status = "302 Redirect"
+            http.response.headers["location"] = "/oauth/consent"
+            http.response.body = "Redirecting ..."
+            helper_log(__file__, "Redirecting to", "/oauth/consent")
+            return
+        else:
+            helper_log(
+                __file__,
+                "Not signed in, preparing code PKCE request without sub, and triggering login hook",
+            )
+            code_pkce_request = CodePkceRequest(
+                client_id=client_id,
+                code_challenge=q["code_challenge"][0],
+                scopes=scopes,
+                state=state,
+                sub=None,
+            )
+            store_oauth_authorization_server_code_pkce_request_put(
+                new_code, code_pkce_request
+            )
+            # Start a login flow
+            oauth_authorization_server_on_authorize_when_not_signed_in(http, new_code)
+
+    return route_oauth_authorization_server_authorize
 
 
 def route_oauth_authorization_server_token(http):

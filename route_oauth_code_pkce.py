@@ -7,7 +7,6 @@ Steps:
 
 import json
 import urllib.parse
-import helper_hooks
 from urllib.request import urlopen, Request
 from config import config_url
 from helper_log import helper_log
@@ -33,50 +32,53 @@ from store_oauth_code_pkce_code_verifier import (
 #     http.response.body = "OK" + jwt
 
 
-def route_oauth_code_pkce_callback(http):
-    q = urllib.parse.parse_qs(
-        http.request.query,
-        keep_blank_values=False,
-        strict_parsing=True,
-        encoding="utf-8",
-        max_num_fields=10,
-        separator="&",
-    )
-    assert len(q) >= 1, "Unexpected query string length"
-    assert len(q["code"]) == 1
-    if "state" in q:
-        assert len(q["state"]) == 1
-    code_verifier = store_oauth_code_pkce_code_verifier_get_and_delete(
-        q["state"][0]
-    ).code_verifier
-    code = q["code"][0]
+def make_route_oauth_code_pkce_callback(oauth_code_pkce_on_success):
+    def route_oauth_code_pkce_callback(http):
+        q = urllib.parse.parse_qs(
+            http.request.query,
+            keep_blank_values=False,
+            strict_parsing=True,
+            encoding="utf-8",
+            max_num_fields=10,
+            separator="&",
+        )
+        assert len(q) >= 1, "Unexpected query string length"
+        assert len(q["code"]) == 1
+        if "state" in q:
+            assert len(q["state"]) == 1
+        code_verifier = store_oauth_code_pkce_code_verifier_get_and_delete(
+            q["state"][0]
+        ).code_verifier
+        code = q["code"][0]
 
-    # https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
+        # https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 
-    data = (
-        "client_id="
-        + urllib.parse.quote("client")  # XXX This should be dynamic
-        + "&code_verifier="
-        + urllib.parse.quote(code_verifier)
-        + "&code="
-        + urllib.parse.quote(code)
-        + "&grant_type=authorization_code"
-    ).encode("utf8")
+        data = (
+            "client_id="
+            + urllib.parse.quote("client")  # XXX This should be dynamic
+            + "&code_verifier="
+            + urllib.parse.quote(code_verifier)
+            + "&code="
+            + urllib.parse.quote(code)
+            + "&grant_type=authorization_code"
+        ).encode("utf8")
 
-    try:
-        config_token_url = config_url + "/oauth/token"
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        helper_log(__file__, "URL:", config_token_url, data, "POST", headers)
-        with urlopen(
-            Request(config_token_url, data=data, method="POST", headers=headers)
-        ) as fp:
-            response = json.loads(fp.read())
-            print(response)
-            assert response["token_type"].lower() == "bearer"
-            helper_hooks.hooks["oauth_code_pkce_on_success"](http, response)
-    except urllib.error.HTTPError as e:
-        helper_log(__file__, "ERROR:", e.read().decode())
-        http.response.body = "Could not get access token."
+        try:
+            config_token_url = config_url + "/oauth/token"
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+            helper_log(__file__, "URL:", config_token_url, data, "POST", headers)
+            with urlopen(
+                Request(config_token_url, data=data, method="POST", headers=headers)
+            ) as fp:
+                response = json.loads(fp.read())
+                print(response)
+                assert response["token_type"].lower() == "bearer"
+                oauth_code_pkce_on_success(http, response)
+        except urllib.error.HTTPError as e:
+            helper_log(__file__, "ERROR:", e.read().decode())
+            http.response.body = "Could not get access token."
+
+    return route_oauth_code_pkce_callback
 
 
 # XXX Good to send state here too so we can use it to retireve the code_verfier
