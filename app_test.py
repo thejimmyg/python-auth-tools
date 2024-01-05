@@ -1,11 +1,5 @@
 import helper_hooks
-from driver_key_value_store_sqlite import (
-    driver_key_value_store_sqlite_cleanup,
-    driver_key_value_store_sqlite_del,
-    driver_key_value_store_sqlite_get,
-    driver_key_value_store_sqlite_init,
-    driver_key_value_store_sqlite_put,
-)
+
 from plugin_oauth_test import (
     plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
     plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
@@ -58,12 +52,6 @@ def route_home(http):
 
 
 hooks = helper_hooks.hooks = {
-    "init": [
-        driver_key_value_store_sqlite_init,
-    ],
-    "cleanup": [
-        driver_key_value_store_sqlite_cleanup,
-    ],
     "routes": {
         "/saml2/login/": route_saml_sp_login,
         "/saml2/acs/": route_saml_sp_acs,
@@ -87,7 +75,4 @@ hooks = helper_hooks.hooks = {
     "oauth_authorization_server_on_authorize_when_not_signed_in": plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
     "oauth_authorization_server_is_signed_in": plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
     "oauth_authorization_server_on_save_code": plugin_oauth_test_hook_oauth_authorization_server_on_save_code,
-    "driver_key_value_store_del": driver_key_value_store_sqlite_del,
-    "driver_key_value_store_get": driver_key_value_store_sqlite_get,
-    "driver_key_value_store_put": driver_key_value_store_sqlite_put,
 }

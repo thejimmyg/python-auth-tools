@@ -1,11 +1,7 @@
 import time
 
 from data_oauth_authorization_server import CodePkceRequest
-from driver_key_value_store import (
-    driver_key_value_store_del,
-    driver_key_value_store_get,
-    driver_key_value_store_put,
-)
+import kvstore.driver
 
 STORE = "oauth_authorization_server_code_pkce_request"
 
@@ -25,17 +21,17 @@ def store_oauth_authorization_server_code_pkce_request_put(
         del values["state"]
     if values["sub"] is None:
         del values["sub"]
-    driver_key_value_store_put(STORE, code, values, ttl=time.time() + 30)
+    kvstore.driver.put(STORE, code, values, ttl=time.time() + 30)
 
 
 def store_oauth_authorization_server_code_pkce_request_get_and_delete(code: str):
     result = store_oauth_authorization_code_pkce_request_get(code)
-    driver_key_value_store_del(STORE, code)
+    kvstore.driver.delete(STORE, code)
     return result
 
 
 def store_oauth_authorization_code_pkce_request_get(code: str):
-    values = driver_key_value_store_get(STORE, code)
+    values, ttl = kvstore.driver.get(STORE, code, consistent=True)
     if values.get("scopes"):
         values["scopes"] = [scope for scope in values["scopes"].split(" ") if scope]
     # else:

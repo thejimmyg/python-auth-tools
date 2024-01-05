@@ -9,18 +9,16 @@ current_kid_value_cache = TTLCache(
 )
 
 
-from driver_key_value_store import (
-    driver_key_value_store_get,
-    driver_key_value_store_put,
-)
+import kvstore.driver
 
 STORE = "webhook_provider_keys_current"
 
 
 def store_webhook_provider_keys_current_put(kid: str):
-    driver_key_value_store_put(STORE, "current", dict(kid=kid))
+    kvstore.driver.put(STORE, "current", dict(kid=kid))
 
 
 @cached(cache=current_kid_value_cache, lock=rlock)
 def store_webhook_provider_keys_current_get_and_cache():
-    return driver_key_value_store_get(STORE, "current")["kid"]
+    values, ttl = driver_key_value_store_get(STORE, "current")
+    return values["kid"]

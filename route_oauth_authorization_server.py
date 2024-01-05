@@ -1,5 +1,4 @@
 import base64
-import time
 import urllib.parse
 from threading import RLock
 
@@ -23,22 +22,12 @@ from store_oauth_authorization_server_code_pkce_request import (
 from store_oauth_authorization_server_keys_current import (
     store_oauth_authorization_server_keys_current_get_and_cache,
 )
-
-from pydantic import BaseModel
-
-from driver_key_value_store import (
-    driver_key_value_store_get,
-    driver_key_value_store_put,
+from store_oauth_authorization_server_refresh import (
+    store_oauth_authorization_server_refresh_get_refresh_token,
+    store_oauth_authorization_server_refresh_get_refresh_token_family,
+    store_oauth_authorization_server_refresh_put_refresh_token_family,
+    store_oauth_authorization_server_refresh_put_refresh_token,
 )
-
-
-class RefreshTokenFamily(BaseModel):
-    client_id: str
-    sub: str
-    scopes_str: str
-
-
-REFRESH_STORE = "oauth_authorization_server_refresh"
 
 rlock = RLock()
 
@@ -185,12 +174,11 @@ def route_oauth_authorization_server_token(http):
         refresh_token = q["refresh_token"][0]
         family, _ = refresh_token.split(".")
         # 1, Check refresh token is known
-        driver_key_value_store_get(REFRESH_STORE, "/token/" + refresh_token)
+        store_oauth_authorization_server_refresh_get_refresh_token(refresh_token)
         # 2. Check refresh token family still exists <- Actually, the fresh token data could be with the family?
-        refresh_token_family = RefreshTokenFamily(
-            **driver_key_value_store_get(REFRESH_STORE, "/family/" + family)
+        refresh_token_family = (
+            store_oauth_authorization_server_refresh_get_refresh_token_family(family)
         )
-
         # Note: https://datatracker.ietf.org/doc/html/rfc6749#section-6 Refresh token client and scopes cannot change
         http.response.status = "200 OK"
         http.response.body = issue(
@@ -288,21 +276,13 @@ def issue(client_id, sub, expires_in, scopes, grant_type, token_family=None):
         refresh_family_expires_in = 60 * 60 * 24
         if token_family is None:
             token_family = helper_pkce_code_verifier()[:63]
-            driver_key_value_store_put(
-                store=REFRESH_STORE,
-                key="/family/" + token_family,
-                value=RefreshTokenFamily(
-                    client_id=client_id, sub=sub, scopes_str=" ".join(scopes)
-                ),
-                ttl=time.time() + refresh_family_expires_in,
+            store_oauth_authorization_server_refresh_put_refresh_token_family(
+                token_family, client_id, sub, scopes, refresh_family_expires_in
             )
         refresh_token_current = helper_pkce_code_verifier()[:64]
         refresh_token = f"{token_family}.{refresh_token_current}"
-        driver_key_value_store_put(
-            store=REFRESH_STORE,
-            key="/token/" + refresh_token,
-            value={},
-            ttl=time.time() + expires_in,
+        store_oauth_authorization_server_refresh_put_refresh_token(
+            refresh_token, expires_in
         )
         response["refresh_token"] = refresh_token
     return response

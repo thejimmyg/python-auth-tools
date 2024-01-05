@@ -14,12 +14,6 @@ from selenium.webdriver.common.keys import Keys
 
 import helper_hooks
 from app_test import Home
-from driver_key_value_store_sqlite import (
-    driver_key_value_store_sqlite_del,
-    driver_key_value_store_sqlite_get,
-    driver_key_value_store_sqlite_put,
-)
-from helper_log import helper_log
 from helper_oauth_resource_owner import helper_oauth_resource_owner_verify_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
 from store_oauth_authorization_server_code_pkce_request import (
@@ -103,70 +97,6 @@ def test_navigation():
     )
     assert client_logout_crumbs2 == client_logout_crumbs
     assert len(_crumbs_cache) == 4, len(_cache)
-
-
-def test_driver_key_value_store_sqlite():
-    driver_key_value_store_sqlite_put(
-        store="test",
-        key="foo1",
-        value=dict(banana=3.14, foo="hello"),
-        ttl=time.time() + 0.1,
-    )
-    result = driver_key_value_store_sqlite_get(store="test", key="foo1")
-    assert result == {"banana": 3.14, "foo": "hello"}, result
-    helper_log(__file__, "Stored foo1 successfully")
-
-    driver_key_value_store_sqlite_put(
-        store="test",
-        key="foo1",
-        value=dict(banana=3.15, foo="goodbye"),
-        ttl=time.time() + 0.1,
-    )
-    result = driver_key_value_store_sqlite_get(store="test", key="foo1")
-    assert result == {"banana": 3.15, "foo": "goodbye"}, result
-    helper_log(__file__, "Updated foo1 successfully")
-
-    driver_key_value_store_sqlite_put(
-        store="test",
-        key="foo1",
-        value=dict(banana=3.16, foo="bye"),
-    )
-    result = driver_key_value_store_sqlite_get(store="test", key="foo1")
-    assert result == {"banana": 3.16, "foo": "bye"}, result
-    helper_log(__file__, "Updated foo1 successfully without a ttl")
-
-    time.sleep(0.11)
-    result = driver_key_value_store_sqlite_get(store="test", key="foo1")
-    assert result == {"banana": 3.16, "foo": "bye"}, result
-    helper_log(__file__, "foo1 is still there after the ttl time")
-
-    driver_key_value_store_sqlite_put(
-        store="test", key="foo2", value=dict(banana=3.14, foo="hello")
-    )
-    result = driver_key_value_store_sqlite_get(store="test", key="foo2")
-    assert result == {"banana": 3.14, "foo": "hello"}, result
-
-    driver_key_value_store_sqlite_put(
-        store="test", key="foo3", value=dict(banana=3.14, foo="hello"), ttl=time.time()
-    )
-    try:
-        print(driver_key_value_store_sqlite_get(store="test", key="foo3"))
-    except:
-        helper_log(__file__, "Cannot print foo3 since it has already expired")
-    else:
-        raise Exception("Showed the foo3 result when it should have expired")
-
-    driver_key_value_store_sqlite_put(
-        store="test", key="foo4", value=dict(banana=3.14, foo="hello")
-    )
-    driver_key_value_store_sqlite_del(store="test", key="foo4")
-
-    try:
-        print(driver_key_value_store_sqlite_get(store="test", key="foo4"))
-    except:
-        helper_log(__file__, "Cannot print foo4 since it has been successfully deleted")
-    else:
-        raise Exception("Showed the foo4 result when it should have expired")
 
 
 def test_store():
@@ -649,7 +579,6 @@ if __name__ == "__main__":
     # Unit tests
     test_navigation()
     test_render()
-    test_driver_key_value_store_sqlite()
     test_store()
 
     # End to end
