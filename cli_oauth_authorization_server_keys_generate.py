@@ -1,7 +1,6 @@
 if __name__ == "__main__":
     import sys
 
-    from helper_hooks import helper_hooks_setup
     from helper_log import helper_log
 
     import json
@@ -17,9 +16,7 @@ if __name__ == "__main__":
         store_oauth_authorization_server_jwks_get,
     )
 
-    hook_module_path = sys.argv[1]
-    helper_hooks_setup(hook_module_path)
-    kid = sys.argv[2]
+    kid = sys.argv[1]
     key = jwk.JWK.generate(
         kty="RSA", size=2048, kid=kid, use="sig", e="AQAB", alg="RS256"
     )

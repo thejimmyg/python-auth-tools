@@ -31,19 +31,8 @@ I'd like this code to run in multiple very different environments like Raspberry
 * There is no package. All the individual `.py` files should be on `PYTHONPATH` and can therefore just be imported, no need for `setup.py`, `pyproject.toml` or `pip` in order to use them
 * There are no directories for `.py` files. By keeping everything top level, everything can import everything else easily without the code needing to be installed as a package.
 * There aren't really any classes, they aren't needed. Instead each module is designed to be used once (singleton pattern) and so can store its state in module-level global variables. This means everything can be normal Python functions. The code does uses classes for data validation though. If you need to use the same component twice, make a copy of the files with a different name. The implementations will probably diverge over time anyway, so in the long term you'll reduce bugs.
-* There is a hooks system so that you can customise the behaviour of the existing code without needing classes/inheritance etc.
 * Some effort has been made to consider threadsafety, but really you are better off using gevent for cooperative multitasking making it very efficient in a single process. You should be able to safely run multiple processes using gevent at once on the same computer and round-robin proxy to each if you want to make the most of the available CPUs.
 * All HTTP headers are lowercase. If you set or try to access anything not lowercase, it won't error, but the behaviour is undefined.
-
-## Understanding Hooks
-
-To run any of the code, you compose the different `.py` files together into your own `hooks_` Python module that imports the `helper_hooks` module and sets its `hooks` variable with all the hooks you want to register.
-
-That `hooks_` module name is then passed to one of the `cli_*.py` files on the command line when you run it.
-
-Behind the scenes, each of the modules that can use your hooks will do so by looking them up in `helper_hooks.hooks`.
-
-The only example of this is the `app_test.py` file which is used to run a server that combines an OAuth 2 Authorization Server, Clients, Resource Owners as well as Login, consen (albeit automatically granted) and SAML2 flows as part of the test suite.
 
 
 ## Install
@@ -81,7 +70,6 @@ STORE_DIR='./store'
 * init
 * cleanup
 * routes
-* \*\*hooks
 
 XXX More documentation needed here.
 
@@ -98,14 +86,15 @@ source .venv/bin/activate
 ```
 
 ```sh
-python3 cli_oauth_authorization_server_client_credentials_put.py app_test client secret read
-python3 cli_oauth_authorization_server_code_pkce_put.py app_test client http://localhost:16001/oauth-code-pkce/callback read
-python3 cli_oauth_authorization_server_keys_generate.py app_test test
-python3 cli_oauth_authorization_server_keys_current_set.py app_test test
+python3 cli_oauth_authorization_server_client_credentials_put.py client secret read
+python3 cli_oauth_authorization_server_code_pkce_put.py client http://localhost:16001/oauth-code-pkce/callback read
+python3 cli_oauth_authorization_server_keys_generate.py test
+python3 cli_oauth_authorization_server_keys_current_set.py test
 ```
 
 ```sh
 python3 cli_serve_gevent.py app_test
+python3 cli_serve_wsgi.py app_test
 ```
 
 In the second terminal:
@@ -115,21 +104,21 @@ source .venv/bin/activate
 ```
 
 ```sh
-export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py app_test client sub "read" test` && echo $TOKEN
-python3 cli_oauth_resource_owner_verify_jwt.py app_test "$TOKEN"
+export TOKEN=`python3 cli_oauth_authorization_server_sign_jwt.py client sub "read" test` && echo $TOKEN
+python3 cli_oauth_resource_owner_verify_jwt.py "$TOKEN"
 curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
 ```
 
 ```sh
-python3 cli_webhook_provider_keys_generate.py app_test test
-python3 cli_webhook_provider_keys_current_set.py app_test test
+python3 cli_webhook_provider_keys_generate.py test
+python3 cli_webhook_provider_keys_current_set.py test
 export PAYLOAD='{"hello": "world"}'
-export SIG=`python3 cli_webhook_provider_sign_jwt.py app_test "$PAYLOAD" test` && echo $SIG
-python3 cli_webhook_consumer_verify_jwt.py app_test "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-provider-jwks.json"
+export SIG=`python3 ccli_webhook_consumer_verify_jwtli_webhook_provider_sign_jwt.py "$PAYLOAD" test` && echo $SIG
+python3 cli_webhook_consumer_verify_jwt.py "$SIG" "$PAYLOAD" "http://localhost:16001/.well-known/webhook-provider-jwks.json"
 ```
 
 ```sh
-python3 cli_oauth_client_credentials.py app_test client secret read
+python3 cli_oauth_client_credentials.py client secret read
 ```
 
 ## Test

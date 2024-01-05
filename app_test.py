@@ -1,5 +1,3 @@
-import helper_hooks
-
 from plugin_oauth_test import (
     plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
     plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
@@ -51,30 +49,28 @@ def route_home(http):
     http.response.body = Home(title="OAuth Client Home")
 
 
-hooks = helper_hooks.hooks = {
-    "routes": {
-        "/saml2/login/": route_saml_sp_login,
-        "/saml2/acs/": route_saml_sp_acs,
-        "/": route_home,
-        "*": route_error_not_found,
-        "/api": route_oauth_resource_owner_home,
-        "/api/v1": route_oauth_resource_owner_api_v1,
-        "/api/openapi.json": route_oauth_resource_owner_openapi,
-        "/static/file": route_static("static/file", "text/plain"),
-        "/.well-known/jwks.json": route_oauth_authorization_server_jwks_json,
-        "/.well-known/webhook-provider-jwks.json": route_webhook_provider_jwks_json,
-        "/.well-known/openid-configuration": route_oauth_authorization_server_openid_configuration,
-        "/oauth-code-pkce/login": route_oauth_code_pkce_login,
-        "/oauth-code-pkce/callback": make_route_oauth_code_pkce_callback(
-            oauth_code_pkce_on_success=plugin_oauth_test_hook_oauth_code_pkce_on_success
-        ),
-        "/oauth/authorize": make_route_oauth_authorization_server_authorize(
-            oauth_authorization_server_on_authorize_when_not_signed_in=plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
-            oauth_authorization_server_is_signed_in=plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
-            oauth_authorization_server_on_save_code=plugin_oauth_test_hook_oauth_authorization_server_on_save_code,
-        ),
-        "/oauth/login": plugin_oauth_test_route_oauth_authorization_server_login,
-        "/oauth/consent": plugin_oauth_test_route_oauth_authorization_server_consent,
-        "/oauth/token": route_oauth_authorization_server_token,
-    },
+routes = {
+    "/saml2/login/": route_saml_sp_login,
+    "/saml2/acs/": route_saml_sp_acs,
+    "/": route_home,
+    "*": route_error_not_found,
+    "/api": route_oauth_resource_owner_home,
+    "/api/v1": route_oauth_resource_owner_api_v1,
+    "/api/openapi.json": route_oauth_resource_owner_openapi,
+    "/static/file": route_static("static/file", "text/plain"),
+    "/.well-known/jwks.json": route_oauth_authorization_server_jwks_json,
+    "/.well-known/webhook-provider-jwks.json": route_webhook_provider_jwks_json,
+    "/.well-known/openid-configuration": route_oauth_authorization_server_openid_configuration,
+    "/oauth-code-pkce/login": route_oauth_code_pkce_login,
+    "/oauth-code-pkce/callback": make_route_oauth_code_pkce_callback(
+        oauth_code_pkce_on_success=plugin_oauth_test_hook_oauth_code_pkce_on_success
+    ),
+    "/oauth/authorize": make_route_oauth_authorization_server_authorize(
+        oauth_authorization_server_on_authorize_when_not_signed_in=plugin_oauth_test_hook_oauth_authorization_server_on_authorize_when_not_signed_in,
+        oauth_authorization_server_is_signed_in=plugin_oauth_test_hook_oauth_authorization_server_is_signed_in,
+        oauth_authorization_server_on_save_code=plugin_oauth_test_hook_oauth_authorization_server_on_save_code,
+    ),
+    "/oauth/login": plugin_oauth_test_route_oauth_authorization_server_login,
+    "/oauth/consent": plugin_oauth_test_route_oauth_authorization_server_consent,
+    "/oauth/token": route_oauth_authorization_server_token,
 }

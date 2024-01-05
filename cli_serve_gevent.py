@@ -7,16 +7,17 @@ if __name__ == "__main__":
 
     from gevent.server import StreamServer
 
-    import helper_hooks
     from config import config_host, config_port
     from serve_gevent import serve_gevent
+    import importlib
 
-    hook_module_path = sys.argv[1]
-    helper_hooks.helper_hooks_setup(hook_module_path)
+    routes_module_path = sys.argv[1]
+    routes_module = importlib.import_module(routes_module_path)
+    routes = getattr(routes_module, "routes")
 
     server = StreamServer(
         (config_host, config_port),
-        serve_gevent(helper_hooks.hooks["routes"]),
+        serve_gevent(routes),
     )
     print(
         "Starting server on {host}:{port} using gevent".format(

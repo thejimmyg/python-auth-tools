@@ -85,9 +85,9 @@ def make_app(routes):
     return app
 
 
-import helper_hooks
+import importlib
 
-hook_module_path = "app_test"
-helper_hooks.helper_hooks_setup(hook_module_path)
+routes_module_path = "app_test"
+routes_module = importlib.import_module(routes_module_path)
 
-app = make_app(routes=helper_hooks.hooks["routes"])
+app = make_app(routes=getattr(routes_module, "routes"))

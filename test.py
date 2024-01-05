@@ -12,7 +12,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-import helper_hooks
 from app_test import Home
 from helper_oauth_resource_owner import helper_oauth_resource_owner_verify_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
@@ -70,14 +69,16 @@ def test_navigation():
         }
     }
 
-    helper_hooks.hooks["navigation"] = navigation
-
-    home_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(url_home)
+    home_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(
+        url_home, navigation
+    )
     assert home_crumbs == [("/", "Home")], home_crumbs
-    auth_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(url_auth)
+    auth_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(
+        url_auth, navigation
+    )
     assert auth_crumbs == [("/", "Home"), ("/auth", "Auth")], auth_crumbs
     auth_session_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(
-        url_auth_session
+        url_auth_session, navigation
     )
     assert auth_session_crumbs == [
         ("/", "Home"),
@@ -85,7 +86,7 @@ def test_navigation():
         ("/auth/session", "Auth Session"),
     ], auth_session_crumbs
     client_logout_crumbs = _helper_navigation_generate_and_cache_breadcrumbs(
-        url_client_logout
+        url_client_logout, navigation
     )
     assert client_logout_crumbs == [
         ("/", "Home"),
@@ -93,7 +94,7 @@ def test_navigation():
         ("/client/logout", "Client Logout"),
     ], client_logout_crumbs
     client_logout_crumbs2 = _helper_navigation_generate_and_cache_breadcrumbs(
-        url_client_logout
+        url_client_logout, navigation
     )
     assert client_logout_crumbs2 == client_logout_crumbs
     assert len(_crumbs_cache) == 4, len(_cache)
@@ -397,7 +398,6 @@ def exec_cli_oauth_authorization_server_code_pkce_put(env, url):
         [
             "python3",
             "cli_oauth_authorization_server_code_pkce_put.py",
-            "app_test",
             "client",
             url + "/oauth-code-pkce/callback",
             "read offline_access",
@@ -414,7 +414,6 @@ def exec_cli_oauth_authorization_server_client_credentials_put(env):
         [
             "python3",
             "cli_oauth_authorization_server_client_credentials_put.py",
-            "app_test",
             "client",
             "secret",
             "read offline_access",
@@ -431,7 +430,6 @@ def exec_cli_oauth_authorization_server_keys_generate(env, kid):
         [
             "python3",
             "cli_oauth_authorization_server_keys_generate.py",
-            "app_test",
             kid,
         ],
         env=env,
@@ -446,7 +444,6 @@ def exec_cli_oauth_authorization_server_keys_current_set(env, kid):
         [
             "python3",
             "cli_oauth_authorization_server_keys_current_set.py",
-            "app_test",
             kid,
         ],
         env=env,
@@ -458,7 +455,7 @@ def exec_cli_webhook_provider_keys_generate(env, kid):
     print()
     print("Webhook provider generate keys")
     process = subprocess.Popen(
-        ["python3", "cli_webhook_provider_keys_generate.py", "app_test", kid], env=env
+        ["python3", "cli_webhook_provider_keys_generate.py", kid], env=env
     )
     assert process.wait() == 0
 
@@ -467,7 +464,7 @@ def exec_cli_webhook_provider_keys_current_set(env, kid):
     print()
     print("Webhook provider set current key")
     process = subprocess.Popen(
-        ["python3", "cli_webhook_provider_keys_current_set.py", "app_test", kid],
+        ["python3", "cli_webhook_provider_keys_current_set.py", kid],
         env=env,
     )
     assert process.wait() == 0
@@ -477,7 +474,7 @@ def exec_cli_webhook_provider_sign_jwt(env, payload, kid):
     print()
     print("Webhook provider sign JWT")
     process = subprocess.Popen(
-        ["python3", "cli_webhook_provider_sign_jwt.py", "app_test", payload, kid],
+        ["python3", "cli_webhook_provider_sign_jwt.py", payload, kid],
         stdout=subprocess.PIPE,
         env=env,
     )
@@ -495,7 +492,6 @@ def exec_cli_webhook_consumer_verify_jwt(env, sig, body, jwks_url):
         [
             "python3",
             "cli_webhook_consumer_verify_jwt.py",
-            "app_test",
             sig,
             body,
             jwks_url,
@@ -515,7 +511,6 @@ def exec_cli_oauth_authorization_server_sign_jwt(env, kid):
         [
             "python3",
             "cli_oauth_authorization_server_sign_jwt.py",
-            "app_test",
             "client",
             "sub",
             "read offline_access",
@@ -538,7 +533,6 @@ def exec_cli_oauth_client_credentials(env, client, secret, scopes):
         [
             "python3",
             "cli_oauth_client_credentials.py",
-            "app_test",
             client,
             secret,
             " ".join(scopes),
@@ -562,7 +556,7 @@ def exec_cli_oauth_resource_owner_verify_jwt(env, token):
     print()
     print("OAuth resource owner verify JWT", token)
     process = subprocess.Popen(
-        ["python3", "cli_oauth_resource_owner_verify_jwt.py", "app_test", token],
+        ["python3", "cli_oauth_resource_owner_verify_jwt.py", token],
         stdout=subprocess.PIPE,
         env=env,
     )
@@ -572,10 +566,6 @@ def exec_cli_oauth_resource_owner_verify_jwt(env, token):
 
 
 if __name__ == "__main__":
-    from helper_hooks import helper_hooks_setup
-
-    helper_hooks_setup("app_test")
-
     # Unit tests
     test_navigation()
     test_render()
