@@ -60,10 +60,10 @@ def _set_response_cookie_header(http, cookie):
     # XXX This is why it is better to have an array, rather than dict for response headers
     lower_response_headers = [k.lower() for k in http.response.headers]
     parts = cookie.output().split(": ")
-    assert parts[0].lower().strip() == 'set-cookie', parts[0]
+    assert parts[0].lower().strip() == "set-cookie", parts[0]
     if parts[0].lower() in lower_response_headers:
         raise Exception("Setting multiple cookies is not supported yet")
-    http.response.headers['Set-Cookie'] = ": ".join(parts[1:])
+    http.response.headers["Set-Cookie"] = ": ".join(parts[1:])
     if "Cache-Control".lower() in lower_response_headers:
         raise Exception("Cannot currently set the cache control headers twice")
     http.response.headers["Cache-Control"] = 'no-cache="set-cookie"'

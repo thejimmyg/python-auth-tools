@@ -11,7 +11,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-from app.app import Home
+from app.home import Home
 from helper_oauth_resource_owner import helper_oauth_resource_owner_verify_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
 from store_oauth_authorization_server_code_pkce_request import (
@@ -350,8 +350,14 @@ def saml_sp_flow(driver, url):
 
 
 def make_authenticated_request_to_oauth_resource_owner(url, token, expect_sub=True):
-    # curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/resource-owner/api/v1
     print(url + "/resource-owner/api/v1")
+    print(
+        'curl -H "Authorization: Bearer '
+        + token
+        + '" -v '
+        + url
+        + "/resource-owner/api/v1"
+    )
     request = urllib.request.Request(
         url + "/resource-owner/api/v1",
         headers={"Authorization": "Bearer " + token},
@@ -378,7 +384,9 @@ def make_unauthenticated_request_to_oauth_resource_owner(url, token):
     )
     try:
         with urllib.request.urlopen(request) as fp:
-            json.loads(fp.read())
+            response = fp.read()
+            print(response)
+            json.loads(response)
     except urllib.error.HTTPError as e:
         error = e.read().decode("utf8")
         print(e, error)
