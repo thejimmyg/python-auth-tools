@@ -14,29 +14,21 @@ from helper_log import helper_log
 
 
 def app(http):
-    try:
-        if http.request.path == "/":
-            return route_home(http)
-        elif http.request.path == "/static/file":
-            return route_static("static/file", "text/plain")(http)
-        elif http.request.path.startswith("/saml2/"):
-            return route_saml(http)
-        elif http.request.path == "/.well-known/webhook-provider-jwks.json":
-            return route_webhook_provider_jwks_json(http)
-        elif http.request.path.startswith("/resource-owner/"):
-            return route_resourceowner(http)
-        elif http.request.path.startswith("/oauth/") or http.request.path in [
-            "/.well-known/jwks.json",
-            "/.well-known/openid-configuration",
-        ]:
-            return route_authorizationserver(http)
-        elif http.request.path.startswith("/oauth-code-pkce/"):
-            return route_codepkce(http)
-        return route_error_not_found(http)
-    except http.response.RespondEarly:
-        pass
-    except Exception:
-        # Keep whatever headers have been set (e.g. cookies), but show a 500
-        http.response.status = "500 Error"
-        http.response.body = b"500 Error"
-        helper_log(__file__, "ERROR:", traceback.format_exc())
+    if http.request.path == "/":
+        return route_home(http)
+    elif http.request.path == "/static/file":
+        return route_static("static/file", "text/plain")(http)
+    elif http.request.path.startswith("/saml2/"):
+        return route_saml(http)
+    elif http.request.path == "/.well-known/webhook-provider-jwks.json":
+        return route_webhook_provider_jwks_json(http)
+    elif http.request.path.startswith("/resource-owner/"):
+        return route_resourceowner(http)
+    elif http.request.path.startswith("/oauth/") or http.request.path in [
+        "/.well-known/jwks.json",
+        "/.well-known/openid-configuration",
+    ]:
+        return route_authorizationserver(http)
+    elif http.request.path.startswith("/oauth-code-pkce/"):
+        return route_codepkce(http)
+    return route_error_not_found(http)
