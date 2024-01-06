@@ -17,7 +17,7 @@ check: check-python
 	  stack-deploy-lambda.template
 
 test: clean check-python
-	PATH="${PWD}:${PATH}" STORE_DIR=/tmp/store SAML_SP_SLACK_SECONDS='3' python3 test.py cli_serve_wsgi.py
+	PATH="${PWD}:${PATH}" STORE_DIR=/tmp/store SAML_SP_SLACK_SECONDS='3' python3 test.py
 
 format: format-python format-cfn
 

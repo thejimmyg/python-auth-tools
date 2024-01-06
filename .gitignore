@@ -3,6 +3,7 @@
 /__pycache__
 /chromedriver
 /deploy-*.yml
+/driver_key_value_store
 /index.py
 /test
 /tmp

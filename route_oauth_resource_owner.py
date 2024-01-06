@@ -21,7 +21,7 @@ def route_oauth_resource_owner_openapi(http):
         },
         "tags": [],
         "paths": {
-            "/api/v1": {
+            "/resource-owner/api/v1": {
                 "get": {
                     "operationId": "echo_claims",
                     "security": [{"token": []}],

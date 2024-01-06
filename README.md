@@ -93,8 +93,7 @@ python3 cli_oauth_authorization_server_keys_current_set.py test
 ```
 
 ```sh
-python3 cli_serve_gevent.py app_test
-python3 cli_serve_wsgi.py app_test
+PYTHONPATH=. python3 serve/adapter/wsgi/bin/serve_wsgi.py app.app:app localhost:16001
 ```
 
 In the second terminal:
@@ -133,8 +132,7 @@ Then run (WARNING: deletes your existing `store`, `test` and `tmp` directories):
 
 ```sh
 sudo systemctl restart ntp
-rm -rf ./store ./test ./tmp && python3 test.py cli_serve_gevent.py
-rm -rf ./store ./test ./tmp && python3 test.py cli_serve_wsgi.py
+rm -rf ./store ./test ./tmp && PYTHONPATH=. python3 serve/adapter/wsgi/bin/serve_wsgi.py app.app:app localhost:16001
 ```
 
 On macOS you'll need a new version of ChromeDriver. You can fetch it like this:
@@ -150,8 +148,7 @@ rm -r chromedriver-mac-arm64
 Then you can run the tests with the path to the local `chromedriver` like this (WARNING: deletes your existing `store`, `test` and `tmp` directories):
 
 ```sh
-rm -rf ./store ./test ./tmp && PATH="${PWD}:${PATH}" python3 test.py cli_serve_gevent.py
-rm -rf ./store ./test ./tmp && PATH="${PWD}:${PATH}" python3 test.py cli_serve_wsgi.py
+rm -rf ./store ./test ./tmp && PATH="${PWD}:${PATH}" && PYTHONPATH=. python3 serve/adapter/wsgi/bin/serve_wsgi.py app.app:app localhost:16001
 ```
 
 You might need to set some slack if your time doesn't match the test SAML IdP time:

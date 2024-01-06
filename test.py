@@ -3,7 +3,6 @@ import math
 import os
 import random
 import subprocess
-import sys
 import threading
 import time
 import urllib.request
@@ -12,7 +11,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-from app_test import Home
+from app.app import Home
 from helper_oauth_resource_owner import helper_oauth_resource_owner_verify_jwt
 from helper_pkce import helper_pkce_code_challenge, helper_pkce_code_verifier
 from store_oauth_authorization_server_code_pkce_request import (
@@ -23,8 +22,6 @@ from store_oauth_authorization_server_code_pkce_request import (
 from store_session import Session, store_session_get, store_session_put
 
 WIGGLE_ROOM = 2
-# CLI_SERVE_FILE = "cli_serve_gevent.py"
-CLI_SERVE_FILE = sys.argv[1]
 
 from helper_navigation import (
     _crumbs_cache,
@@ -312,8 +309,9 @@ def oauth_code_pkce_browser_invalid_scope(driver, url):
     elem.click()
     # Obviously we'd like to do better in future, perhaps by calling back with an invalid scope message in the JSON
     assert (
-        driver.find_element(By.TAG_NAME, "body").text == "500 Error"
-    ), driver.getPageSource()
+        driver.find_element(By.TAG_NAME, "body").text
+        == "A server error occurred.  Please contact the administrator."
+    ), driver.find_element(By.TAG_NAME, "body").text
 
 
 def saml_sp_flow(driver, url):
@@ -352,10 +350,10 @@ def saml_sp_flow(driver, url):
 
 
 def make_authenticated_request_to_oauth_resource_owner(url, token, expect_sub=True):
-    # curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/api/v1
-    print(url + "/api/v1")
+    # curl -H "Authorization: Bearer $TOKEN" -v http://localhost:16001/resource-owner/api/v1
+    print(url + "/resource-owner/api/v1")
     request = urllib.request.Request(
-        url + "/api/v1",
+        url + "/resource-owner/api/v1",
         headers={"Authorization": "Bearer " + token},
     )
     with urllib.request.urlopen(request) as fp:
@@ -373,9 +371,9 @@ def make_authenticated_request_to_oauth_resource_owner(url, token, expect_sub=Tr
 
 
 def make_unauthenticated_request_to_oauth_resource_owner(url, token):
-    print(url + "/api/v1")
+    print(url + "/resource-owner/api/v1")
     request = urllib.request.Request(
-        url + "/api/v1",
+        url + "/resource-owner/api/v1",
         headers={"Authorization": "Bearer " + token + "invalid"},
     )
     try:
@@ -581,6 +579,7 @@ if __name__ == "__main__":
     os.makedirs(tmp_dir, exist_ok=True)
     os.makedirs(os.path.join(store_dir, "oauth_authorization_server"), exist_ok=True)
     env = {
+        "PYTHONPATH": os.getcwd(),
         "PATH": os.environ["PATH"],
         "URL": url,
         "STORE_DIR": store_dir,
@@ -619,7 +618,13 @@ if __name__ == "__main__":
         log = open(log_path, "wb")
         p = subprocess.Popen(
             # Have to run Python in unbuffered mode (-u) to get the logs streaming to the log files
-            ["python3", "-u", CLI_SERVE_FILE, "app_test"],
+            [
+                "python3",
+                "-u",
+                "serve/adapter/wsgi/bin/serve_wsgi.py",
+                "app.app:app",
+                "localhost:" + str(port),
+            ],
             env=env,
             stdout=log,
             stderr=log,
