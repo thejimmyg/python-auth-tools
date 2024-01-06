@@ -30,7 +30,7 @@ def route_static(filename, content_type):
             http.response.status = "304 Not Modified"
             return
         if "gzip" in http.request.headers.get("accept-encoding", ""):
-            http.response.headers["content-encoding"] = "gzip"
+            http.response.headers["Content-Encoding"] = "gzip"
             tmp_filename = os.path.join(config_gzipped_dir, filename)
             os.makedirs(os.path.split(tmp_filename)[0], exist_ok=True)
             if (
@@ -52,8 +52,8 @@ def route_static(filename, content_type):
             etags[(filename, encoding, mtime)] = hashlib.md5(
                 http.response.body
             ).hexdigest()
-        http.response.headers["content-type"] = content_type
-        http.response.headers["etag"] = etags[(filename, encoding, mtime)]
+        http.response.headers["Content-Type"] = content_type
+        http.response.headers["Etag"] = etags[(filename, encoding, mtime)]
 
     return static_filename
 
@@ -66,11 +66,11 @@ def route_static_gz_dir(url, path, content_type, ext):
         assert http.request.path.endswith(ext)
         assert http.request.path.startswith(url)
         filename = path + urllib.parse.unquote(http.request.path[len(url) :])
-        http.response.headers["content-type"] = content_type
-        http.response.headers["content-encoding"] = "gzip"
+        http.response.headers["Content-Type"] = content_type
+        http.response.headers["Content-Encoding"] = "gzip"
         with open(filename, "rb") as fp:
             http.response.body = fp.read()
-        http.response.headers["content-length"] = str(len(http.response.body))
+        http.response.headers["Content-Length"] = str(len(http.response.body))
 
     return static_gz_dir_handler
 
@@ -83,10 +83,10 @@ def route_static_dir(url, path, content_type, ext):
         assert http.request.path.endswith(ext)
         assert http.request.path.startswith(url)
         filename = path + urllib.parse.unquote(http.request.path[len(url) :])
-        http.response.headers["content-type"] = content_type
+        http.response.headers["Content-Type"] = content_type
         with open(filename, "rb") as fp:
             http.response.body = fp.read()
-        http.response.headers["content-length"] = str(len(http.response.body))
+        http.response.headers["Content-Length"] = str(len(http.response.body))
 
     return static_dir_handler
 

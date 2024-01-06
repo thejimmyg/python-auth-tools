@@ -120,5 +120,5 @@ def route_oauth_code_pkce_login(http):
     )
     if scope:
         authorize_url += "&scope=" + urllib.parse.quote(scope)
-    http.response.headers["location"] = authorize_url
+    http.response.headers["Location"] = authorize_url
     http.response.body = "Redirecting ..."

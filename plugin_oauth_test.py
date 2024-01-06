@@ -114,7 +114,7 @@ def plugin_oauth_test_route_oauth_authorization_server_login(http):
             session.value["code"], sub
         )
         http.response.status = "302 Redirect"
-        http.response.headers["location"] = "/oauth/consent"
+        http.response.headers["Location"] = "/oauth/consent"
         http.response.body = "Redirecting ..."
         helper_log(__file__, "Redirecting to", "/oauth/consent")
 

@@ -113,7 +113,7 @@ def make_route_oauth_authorization_server_authorize(
             )
             # We can redirect straight to the consent code
             http.response.status = "302 Redirect"
-            http.response.headers["location"] = "/oauth/consent"
+            http.response.headers["Location"] = "/oauth/consent"
             http.response.body = "Redirecting ..."
             helper_log(__file__, "Redirecting to", "/oauth/consent")
             return
@@ -147,9 +147,9 @@ def route_oauth_authorization_server_token(http):
     # return access_token
     # curl -H 'Authorization: Basic client:secret' -v "${URL}/oauth/token?grant_type=client_credentials"
     http.response.status = "400 Bad Request"
-    http.response.headers["content-type"] = "application/json;charset=UTF-8"
-    http.response.headers["cache-control"] = "no-store"
-    http.response.headers["pragma"] = "no-cache"
+    http.response.headers["Content-Type"] = "application/json; charset=UTF8"
+    http.response.headers["Cache-Control"] = "no-store"
+    http.response.headers["Pragma"] = "no-cache"
     q = urllib.parse.parse_qs(
         # XXX Should check the method based on the grant_type
         http.request.method.lower() == "get"

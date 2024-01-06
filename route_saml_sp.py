@@ -11,7 +11,7 @@ def route_saml_sp_login(http):
     client = saml_client()
     request_id, info = client.prepare_for_authenticate()
     redirect_url = dict(info["headers"])["Location"]
-    http.response.headers["location"] = redirect_url
+    http.response.headers["Location"] = redirect_url
     http.response.status = "302 Redirect"
     http.response.body = "Redirecting ..."
 

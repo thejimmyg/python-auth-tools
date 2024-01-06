@@ -7,8 +7,6 @@ from render import Base, Html
 
 def hello(http):
     if http.request.method == "post":
-        # print(http.request.headers)
-
         parts = http.request.headers["content-type"].split(";")
         assert parts[0].lower().strip() == "multipart/form-data"
         assert parts[1].strip().lower().startswith("boundary=")

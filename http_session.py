@@ -58,13 +58,15 @@ def http_session_destroy(http, name):
 def _set_response_cookie_header(http, cookie):
     # XXX But what to do about headers that are already set?
     # XXX This is why it is better to have an array, rather than dict for response headers
+    lower_response_headers = [k.lower() for k in http.response.headers]
     parts = cookie.output().split(": ")
-    if parts[0].lower() in http.response.headers:
+    assert parts[0].lower().strip() == 'set-cookie', parts[0]
+    if parts[0].lower() in lower_response_headers:
         raise Exception("Setting multiple cookies is not supported yet")
-    http.response.headers[parts[0].lower()] = ": ".join(parts[1:])
-    if "cache-control" in http.response.headers:
+    http.response.headers['Set-Cookie'] = ": ".join(parts[1:])
+    if "Cache-Control".lower() in lower_response_headers:
         raise Exception("Cannot currently set the cache control headers twice")
-    http.response.headers["cache-control"] = 'no-cache="set-cookie"'
+    http.response.headers["Cache-Control"] = 'no-cache="set-cookie"'
 
 
 def get_session_id_or_respond_early_not_logged_in(http, name):
